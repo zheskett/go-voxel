@@ -8,8 +8,6 @@ import (
 const (
 	TextureWidth  = 320
 	TextureHeight = 240
-	WindowWidth   = TextureWidth * 4
-	WindowHeight  = TextureHeight * 4
 	WindowTitle   = "Go Voxel"
 )
 
@@ -48,7 +46,7 @@ func Init() *RenderManager {
 
 // Render renders the current state
 // It should be called each frame
-func (rm *RenderManager) Render() {
+func (rm *RenderManager) Render(width, height int) {
 	for i := range rm.pixels {
 		rm.pixels[i] = 255
 		if i&0x3 == 0x1 {
@@ -64,5 +62,5 @@ func (rm *RenderManager) Render() {
 
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, rm.fbo)
 	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
-	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, WindowWidth, WindowHeight, gl.COLOR_BUFFER_BIT, gl.NEAREST)
+	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, int32(width), int32(height), gl.COLOR_BUFFER_BIT, gl.NEAREST)
 }
