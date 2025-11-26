@@ -5,7 +5,7 @@ all: build
 build:
 	go build -o go-voxel cmd/go-voxel/go-voxel.go
 
-.PHONEY: run
+.PHONY: run
 run: build
 	./go-voxel
 
