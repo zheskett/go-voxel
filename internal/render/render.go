@@ -2,7 +2,10 @@
 package render
 
 import (
+	"os"
+
 	"github.com/go-gl/gl/v3.3-core/gl"
+	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
 const (
@@ -20,14 +23,34 @@ type RenderManager struct {
 	renderTexture uint32
 	fbo           uint32
 	pixels        Pixels
+	window        *glfw.Window
 }
 
 // Init initializes the render manager
 // and initializes the opengl context
 func Init() *RenderManager {
-	gl.Init()
+	err := gl.Init()
+	if err != nil {
+		panic(err)
+	}
+	// Initialize glfw
+	err = glfw.Init()
+	if err != nil {
+		panic(err)
+	}
 
 	var rm RenderManager = RenderManager{}
+
+	// Window creation
+	glfw.WindowHint(glfw.ContextVersionMajor, 3)
+	glfw.WindowHint(glfw.ContextVersionMinor, 1)
+	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLAnyProfile)
+	window, err := glfw.CreateWindow(TextureWidth*4, TextureHeight*4, WindowTitle, nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	window.MakeContextCurrent()
+	rm.window = window
 
 	gl.GenFramebuffers(1, &rm.fbo)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, rm.fbo)
@@ -46,13 +69,17 @@ func Init() *RenderManager {
 
 // Render renders the current state
 // It should be called each frame
-func (rm *RenderManager) Render(width, height int) {
+func (rm *RenderManager) Render() {
 	for i := range rm.pixels {
 		rm.pixels[i] = 255
 		if i&0x3 == 0x1 {
 			rm.pixels[i] = 0
 		}
 	}
+
+	rm.pixels[4*100] = 0
+	rm.pixels[4*101] = 0
+	rm.pixels[4*102] = 0
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, rm.fbo)
 	gl.Viewport(0, 0, TextureWidth, TextureHeight)
@@ -62,5 +89,15 @@ func (rm *RenderManager) Render(width, height int) {
 
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, rm.fbo)
 	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
-	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, int32(width), int32(height), gl.COLOR_BUFFER_BIT, gl.NEAREST)
+	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, TextureWidth*4, TextureHeight*4, gl.COLOR_BUFFER_BIT, gl.NEAREST)
+
+	rm.window.SwapBuffers()
+	glfw.PollEvents()
+}
+
+func (rm *RenderManager) CheckExit() {
+	if rm.window.GetKey(glfw.KeyEscape) == glfw.Press || rm.window.ShouldClose() {
+		glfw.Terminate()
+		os.Exit(0)
+	}
 }
