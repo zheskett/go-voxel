@@ -14,6 +14,8 @@ const (
 	WindowTitle   = "Go Voxel"
 )
 
+type Color [3]byte
+
 // Pixles contains the data for each pixel on the screen.
 // Every pixel if 4 bytes, RGBA
 type Pixels struct {
@@ -23,11 +25,11 @@ type Pixels struct {
 }
 
 func PixelsInit(width, height int) Pixels {
-	buff := make([]byte, width*height*4)
-	for i := range buff {
-		buff[i] = 0
+	data := make([]byte, width*height*4)
+	for i := range data {
+		data[i] = 0
 	}
-	return Pixels{buff, height, width}
+	return Pixels{data, height, width}
 }
 
 func (px *Pixels) FillPixels(r, g, b byte) {
@@ -52,6 +54,10 @@ func (px *Pixels) GetPixel(x, y int) [3]byte {
 	}
 }
 
+func (px *Pixels) Surrounds(x, y int) bool {
+	return x > 0 && x < px.Width && y > 0 && y < px.Height
+}
+
 // RenderManager contains state for the rendering
 type RenderManager struct {
 	renderTexture uint32
@@ -74,7 +80,7 @@ func RenderManagerInit() *RenderManager {
 		panic(err)
 	}
 
-	var rm RenderManager = RenderManager{}
+	rm := RenderManager{}
 
 	// Window creation
 	glfw.WindowHint(glfw.ContextVersionMajor, 3)
@@ -89,7 +95,6 @@ func RenderManagerInit() *RenderManager {
 
 	gl.GenFramebuffers(1, &rm.fbo)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, rm.fbo)
-
 	gl.GenTextures(1, &rm.renderTexture)
 	gl.BindTexture(gl.TEXTURE_2D, rm.renderTexture)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, TextureWidth, TextureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
@@ -97,7 +102,6 @@ func RenderManagerInit() *RenderManager {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rm.renderTexture, 0)
 
-	// rm.pixels = make(Pixels, TextureWidth*TextureHeight*4)
 	rm.Pixels = PixelsInit(TextureWidth, TextureHeight)
 
 	return &rm

@@ -12,13 +12,15 @@ type Camera struct {
 	Pos       mgl32.Vec3
 	Lookspeed float32
 	Movespeed float32
+	Fov       float32
+	Aspect    float32
 }
 
 func CameraInit() Camera {
 	return Camera{
 		Fvec: mgl32.Vec3{0, 0, 1},
 		Rvec: mgl32.Vec3{1, 0, 0},
-		Uvec: mgl32.Vec3{0, 1, 1},
+		Uvec: mgl32.Vec3{0, 1, 0},
 	}
 }
 
@@ -58,10 +60,10 @@ func UpdateCamInputGLFW(cam *Camera, window *glfw.Window) {
 		tx++
 	}
 	if window.GetKey(glfw.KeySpace) == glfw.Press {
-		ty++
+		ty--
 	}
 	if window.GetKey(glfw.KeyLeftShift) == glfw.Press {
-		ty--
+		ty++
 	}
 	if window.GetKey(glfw.KeyUp) == glfw.Press {
 		rx++
@@ -81,7 +83,6 @@ func UpdateCamInputGLFW(cam *Camera, window *glfw.Window) {
 	if window.GetKey(glfw.KeyE) == glfw.Press {
 		rz++
 	}
-
 	cam.UpdateRotation(float32(rx), float32(ry), float32(rz))
 	cam.UpdatePosition(float32(tx), float32(ty), float32(tz))
 }
