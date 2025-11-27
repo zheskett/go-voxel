@@ -69,13 +69,8 @@ type RenderManager struct {
 // RenderManagerInit initializes the render manager
 // and initializes the opengl context
 func RenderManagerInit() *RenderManager {
-	// Initialize gl
-	err := gl.Init()
-	if err != nil {
-		panic(err)
-	}
 	// Initialize glfw
-	err = glfw.Init()
+	err := glfw.Init()
 	if err != nil {
 		panic(err)
 	}
@@ -84,14 +79,22 @@ func RenderManagerInit() *RenderManager {
 
 	// Window creation
 	glfw.WindowHint(glfw.ContextVersionMajor, 3)
-	glfw.WindowHint(glfw.ContextVersionMinor, 1)
-	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLAnyProfile)
+	glfw.WindowHint(glfw.ContextVersionMinor, 3)
+	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
+
 	window, err := glfw.CreateWindow(TextureWidth*4, TextureHeight*4, WindowTitle, nil, nil)
 	if err != nil {
 		panic(err)
 	}
 	window.MakeContextCurrent()
 	rm.Window = window
+
+	// Initialize gl
+	err = gl.Init()
+	if err != nil {
+		panic(err)
+	}
 
 	gl.GenFramebuffers(1, &rm.fbo)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, rm.fbo)
@@ -118,8 +121,9 @@ func (rm *RenderManager) Render() {
 
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, rm.fbo)
 	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
-	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, TextureWidth*4, TextureHeight*4, gl.COLOR_BUFFER_BIT, gl.NEAREST)
 
+	fbWidth, fbHeight := rm.Window.GetFramebufferSize()
+	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, int32(fbWidth), int32(fbHeight), gl.COLOR_BUFFER_BIT, gl.NEAREST)
 	rm.Window.SwapBuffers()
 	glfw.PollEvents()
 }

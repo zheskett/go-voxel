@@ -27,7 +27,7 @@ func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
 	vox.color[idx] = [3]byte{r, g, b}
 }
 
-func (vox*Voxels) MarchRay(ray Ray) RayHit {
+func (vox *Voxels) MarchRay(ray Ray) RayHit {
 	// TODO
 	return RayHit{}
 }
