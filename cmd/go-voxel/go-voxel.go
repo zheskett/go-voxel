@@ -21,16 +21,83 @@ func main() {
 	cam.Lookspeed = 0.05
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
+	vox := render.VoxelsInit(64, 64, 64)
+	voxelDebugScene(&vox)
 
 	for {
-		RenderDebugRasterTri(&rm.Pixels, &cam)
+		renderDebugTri(&rm.Pixels, &cam)
+		voxelRaymarchRender(&rm.Pixels, &cam, &vox)
 		rm.Render()
 		rm.CheckExit()
 		render.UpdateCamInputGLFW(&cam, rm.Window)
 	}
 }
 
-func RenderDebugRasterTri(pix *render.Pixels, cam *render.Camera) {
+// This currently isn't doing anything, unsure why
+func voxelRaymarchRender(pix *render.Pixels, cam *render.Camera, vox *render.Voxels) {
+	scale := float32(1.0 / math.Tan(float64(cam.Fov/2.0)))
+	hh, hw := float32(pix.Height), float32(pix.Width)
+
+	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
+	dcamudy := cam.Uvec.Mul(scale)
+	// Cast out a ray for each pixel on the screen
+	for i := 0; i < pix.Height; i++ {
+		for j := 0; j < pix.Width; j++ {
+			dx, dy := float32(j)+0.5, float32(i)+0.5
+
+			ndcx, ndcy := (dx-hw)/hw, (dy-hh)/hh
+			// Does Go not have assert?
+			if ndcx > 1 || ndcx < -1 {
+				panic("math mistake")
+			}
+			if ndcy > 1 || ndcy < -1 {
+				panic("math mistake")
+			}
+
+			dcamr := dcamrdx.Mul(-ndcx)
+			dcamu := dcamudy.Mul(ndcy)
+			// This is effectively finding the ray that points to that specific pixel
+			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalize()
+			ray := render.Ray{
+				Origin: cam.Pos,
+				Direc:  raydirec,
+				Tmax:   32.0,
+			}
+
+			rayhit := vox.MarchRay(ray)
+			if rayhit.Hit {
+				color := rayhit.Color
+				pix.SetPixel(j, i, color[0], color[1], color[2])
+			}
+		}
+	}
+}
+
+func voxelDebugScene(vox *render.Voxels) {
+	// Make a teal "ground"
+	for i := 0; i < vox.Z; i++ {
+		for j := 0; j < vox.X; j++ {
+			vox.SetVoxel(i, 0, j, 0, 255, 255)
+		}
+	}
+	// floating red cube
+	for i := 5; i < 10; i++ {
+		for j := 5; j < 10; j++ {
+			for k := 5; k < 10; k++ {
+				vox.SetVoxel(i, j, k, 180, 50, 50)
+			}
+		}
+	}
+	// some green pillars
+	for i := 1; i < 5; i++ {
+		vox.SetVoxel(0, i, 0, 30, 255, 30)
+		vox.SetVoxel(vox.X-1, i, 0, 30, 255, 30)
+		vox.SetVoxel(vox.X-1, i, vox.Z-1, 30, 255, 30)
+		vox.SetVoxel(5, i, 5, 30, 255, 30)
+	}
+}
+
+func renderDebugTri(pix *render.Pixels, cam *render.Camera) {
 	pix.FillPixels(15, 25, 40)
 	vpos := []mgl32.Vec3{
 		{-0.5, 0.0, 3.0},
@@ -42,7 +109,7 @@ func RenderDebugRasterTri(pix *render.Pixels, cam *render.Camera) {
 		{0.0, 1.0, 0.7},
 		{0.7, 0.0, 1.0},
 	}
-	scale := 1.0 / math.Tan(float64(cam.Fov/2.0))
+	scale := float32(1.0 / math.Tan(float64(cam.Fov/2.0)))
 	hw, hh := float32(pix.Width/2), float32(pix.Height/2)
 
 	for i := range vpos {
@@ -55,8 +122,8 @@ func RenderDebugRasterTri(pix *render.Pixels, cam *render.Camera) {
 			vpos[i].Dot(cam.Fvec),
 		}
 		// perspective projection
-		vpos[i][0] /= vpos[i][2] * float32(scale) * cam.Aspect
-		vpos[i][1] /= vpos[i][2] * float32(scale)
+		vpos[i][0] /= vpos[i][2] * scale * cam.Aspect
+		vpos[i][1] /= vpos[i][2] * scale
 
 		// get in ndc
 		vpos[i][0] = vpos[i][0]*hw + hw

@@ -11,10 +11,9 @@ import (
 const (
 	TextureWidth  = 320
 	TextureHeight = 240
+	WindowUpscale = 3
 	WindowTitle   = "Go Voxel"
 )
-
-type Color [3]byte
 
 // Pixles contains the data for each pixel on the screen.
 // Every pixel if 4 bytes, RGBA
@@ -26,7 +25,7 @@ type Pixels struct {
 
 func PixelsInit(width, height int) Pixels {
 	data := make([]byte, width*height*4)
-	for i := range data {
+	for i := 0; i < width*height*4; i++ {
 		data[i] = 0
 	}
 	return Pixels{data, height, width}
@@ -55,7 +54,7 @@ func (px *Pixels) GetPixel(x, y int) [3]byte {
 }
 
 func (px *Pixels) Surrounds(x, y int) bool {
-	return x > 0 && x < px.Width && y > 0 && y < px.Height
+	return x >= 0 && x < px.Width && y >= 0 && y < px.Height
 }
 
 // RenderManager contains state for the rendering
@@ -75,26 +74,35 @@ func RenderManagerInit() *RenderManager {
 		panic(err)
 	}
 
-	rm := RenderManager{}
-
-	// Window creation
-	glfw.WindowHint(glfw.ContextVersionMajor, 3)
-	glfw.WindowHint(glfw.ContextVersionMinor, 3)
-	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
-	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
-
-	window, err := glfw.CreateWindow(TextureWidth*4, TextureHeight*4, WindowTitle, nil, nil)
-	if err != nil {
-		panic(err)
-	}
-	window.MakeContextCurrent()
-	rm.Window = window
-
 	// Initialize gl
 	err = gl.Init()
 	if err != nil {
 		panic(err)
 	}
+
+	rm := RenderManager{}
+
+	// Window creation
+	// glfw.WindowHint(glfw.ContextVersionMajor, 3)
+	// glfw.WindowHint(glfw.ContextVersionMinor, 3)
+	// glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+	// glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
+
+	// This doesn't work either for some reason
+	var major, minor int32
+	gl.GetIntegerv(gl.MAJOR_VERSION, &major)
+	gl.GetIntegerv(gl.MINOR_VERSION, &minor)
+	glfw.WindowHint(glfw.ContextVersionMajor, 3 /* major */)
+	glfw.WindowHint(glfw.ContextVersionMinor, 1 /* minor */)
+	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLAnyProfile)
+	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.False)
+
+	window, err := glfw.CreateWindow(TextureWidth*WindowUpscale, TextureHeight*WindowUpscale, WindowTitle, nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	window.MakeContextCurrent()
+	rm.Window = window
 
 	gl.GenFramebuffers(1, &rm.fbo)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, rm.fbo)
