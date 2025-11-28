@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"runtime"
 
@@ -21,6 +22,7 @@ func main() {
 	cam.Lookspeed = 0.05
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
+	cam.Pos = mgl32.Vec3{16, 4, 16}
 	vox := render.VoxelsInit(64, 64, 64)
 	voxelDebugScene(&vox)
 
@@ -33,35 +35,37 @@ func main() {
 	}
 }
 
-// This currently isn't doing anything, unsure why
 func voxelRaymarchRender(pix *render.Pixels, cam *render.Camera, vox *render.Voxels) {
 	scale := float32(1.0 / math.Tan(float64(cam.Fov/2.0)))
-	hh, hw := float32(pix.Height), float32(pix.Width)
+	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
 
 	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
 	dcamudy := cam.Uvec.Mul(scale)
+
 	// Cast out a ray for each pixel on the screen
 	for i := 0; i < pix.Height; i++ {
 		for j := 0; j < pix.Width; j++ {
 			dx, dy := float32(j)+0.5, float32(i)+0.5
 
-			ndcx, ndcy := (dx-hw)/hw, (dy-hh)/hh
 			// Does Go not have assert?
-			if ndcx > 1 || ndcx < -1 {
+			ndcx, ndcy := -(dx-hw)/hw, -(dy-hh)/hh
+			if ndcx > 1.01 || ndcx < -1.01 {
+				fmt.Printf("ndcx: %v\n", ndcx)
 				panic("math mistake")
 			}
-			if ndcy > 1 || ndcy < -1 {
+			if ndcy > 1.01 || ndcy < -1.01 {
+				fmt.Printf("ndcy: %v\n", ndcy)
 				panic("math mistake")
 			}
 
+			// This is effectively finding the ray that points to that specific pixel
 			dcamr := dcamrdx.Mul(-ndcx)
 			dcamu := dcamudy.Mul(ndcy)
-			// This is effectively finding the ray that points to that specific pixel
 			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalize()
 			ray := render.Ray{
 				Origin: cam.Pos,
 				Direc:  raydirec,
-				Tmax:   32.0,
+				Tmax:   64.0, // The ray can travel 64.0 units before terminating
 			}
 
 			rayhit := vox.MarchRay(ray)
@@ -77,23 +81,24 @@ func voxelDebugScene(vox *render.Voxels) {
 	// Make a teal "ground"
 	for i := 0; i < vox.Z; i++ {
 		for j := 0; j < vox.X; j++ {
-			vox.SetVoxel(i, 0, j, 0, 255, 255)
+			vox.SetVoxel(i, 0, j, 70, 255, 255)
 		}
 	}
-	// floating red cube
-	for i := 5; i < 10; i++ {
-		for j := 5; j < 10; j++ {
-			for k := 5; k < 10; k++ {
+	// Floating red cube
+	for i := 10; i < 15; i++ {
+		for j := 10; j < 15; j++ {
+			for k := 10; k < 15; k++ {
 				vox.SetVoxel(i, j, k, 180, 50, 50)
 			}
 		}
 	}
-	// some green pillars
-	for i := 1; i < 5; i++ {
+	// Some green pillar
+	for i := 1; i < 6; i++ {
 		vox.SetVoxel(0, i, 0, 30, 255, 30)
 		vox.SetVoxel(vox.X-1, i, 0, 30, 255, 30)
 		vox.SetVoxel(vox.X-1, i, vox.Z-1, 30, 255, 30)
 		vox.SetVoxel(5, i, 5, 30, 255, 30)
+		vox.SetVoxel(5, i, 9, 30, 255, 30)
 	}
 }
 

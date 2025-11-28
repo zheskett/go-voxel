@@ -1,5 +1,7 @@
 package render
 
+import "math"
+
 // Naive storage as an array
 type Voxels struct {
 	Z, Y, X  int
@@ -35,51 +37,40 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 	rayhit := RayHit{Hit: false}
 	origin, direc, tmax := ray.Origin, ray.Direc, ray.Tmax
 
-	// I really don't like how there isn't methods to get x, y, components of vectors
-	x, y, z := int(origin[0]), int(origin[1]), int(origin[2])
+	// Ok, this is a huge mess and needs to be cleaned up
+	ox, oy, oz := origin.Elem()
+	x, y, z := int(math.Floor(float64(ox))), int(math.Floor(float64(oy))), int(math.Floor(float64(oz)))
+	dx, dy, dz := direc.Elem()
+	adx, ady, adz := float32(math.Abs(float64(dx))), float32(math.Abs(float64(dy))), float32(math.Abs(float64(dz)))
+	invx, invy, invz := 1.0/adx, 1.0/ady, 1.0/adz
+	fractx, fracty, fractz := ox-float32(x), oy-float32(y), oz-float32(z)
+
 	var stepx, stepy, stepz int
-	// There has to be a better way to write this
-	if direc[0] > 0 {
+	var timex, timey, timez float32
+	if dx > 0 {
 		stepx = 1
+		timex = 1.0 - fractx
 	} else {
 		stepx = -1
+		timex = fractx
 	}
-	if direc[1] > 0 {
+	if dy > 0 {
 		stepy = 1
+		timey = 1.0 - fracty
 	} else {
 		stepy = -1
+		timey = fracty
 	}
-	if direc[2] > 0 {
+	if dz > 0 {
 		stepz = 1
+		timez = 1.0 - fractz
 	} else {
 		stepz = -1
+		timez = fractz
 	}
-
-	// Extracts the distance to closest boundary
-	// Is either fract(x) or 1 - fract(x)
-	var timex, timey, timez float32
-	if stepx > 0 {
-		timex = direc[0] - float32(int32(direc[0]))
-	} else {
-		timex = 1.0 - (direc[0] - float32(int32(direc[0])))
-	}
-	if stepy > 0 {
-		timey = direc[1] - float32(int32(direc[1]))
-	} else {
-		timey = 1.0 - (direc[1] - float32(int32(direc[1])))
-	}
-	if stepz > 0 {
-		timez = direc[2] - float32(int32(direc[2]))
-	} else {
-		timez = 1.0 - (direc[2] - float32(int32(direc[2])))
-	}
-	timex /= direc[0]
-	timey /= direc[1]
-	timez /= direc[2]
-
-	tstepx := float32(stepx) / direc[0]
-	tstepy := float32(stepy) / direc[1]
-	tstepz := float32(stepz) / direc[2]
+	timex *= invx
+	timey *= invy
+	timez *= invz
 
 	time := float32(0.0)
 	for {
@@ -90,28 +81,30 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 			idx := vox.Index(x, y, z)
 			if vox.Presence[idx] {
 				rayhit.Color = vox.Color[idx]
+				rayhit.Hit = true
 				break
 			}
 		}
+
 		if timex < timey {
 			if timex < timez {
 				x += stepx
 				time = timex
-				timex += tstepx
+				timex += invx
 			} else {
 				z += stepz
 				time = timez
-				timez += tstepz
+				timez += invz
 			}
 		} else {
 			if timey < timez {
 				y += stepy
 				time = timey
-				timey += tstepy
+				timey += invy
 			} else {
 				z += stepz
 				time = timez
-				timez += tstepz
+				timez += invz
 			}
 		}
 	}
