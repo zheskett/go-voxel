@@ -3,6 +3,7 @@ package render
 
 import (
 	"os"
+	"runtime"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -83,19 +84,17 @@ func RenderManagerInit() *RenderManager {
 	rm := RenderManager{}
 
 	// Window creation
-	// glfw.WindowHint(glfw.ContextVersionMajor, 3)
-	// glfw.WindowHint(glfw.ContextVersionMinor, 3)
-	// glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
-	// glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
-
-	// This doesn't work either for some reason
-	var major, minor int32
-	gl.GetIntegerv(gl.MAJOR_VERSION, &major)
-	gl.GetIntegerv(gl.MINOR_VERSION, &minor)
-	glfw.WindowHint(glfw.ContextVersionMajor, 3 /* major */)
-	glfw.WindowHint(glfw.ContextVersionMinor, 1 /* minor */)
-	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLAnyProfile)
-	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.False)
+	if runtime.GOOS == "darwin" { // MacOS
+		glfw.WindowHint(glfw.ContextVersionMajor, 3)
+		glfw.WindowHint(glfw.ContextVersionMinor, 3)
+		glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+		glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
+	} else {
+		glfw.WindowHint(glfw.ContextVersionMajor, 3)
+		glfw.WindowHint(glfw.ContextVersionMinor, 1)
+		glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLAnyProfile)
+		glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.False)
+	}
 
 	window, err := glfw.CreateWindow(TextureWidth*WindowUpscale, TextureHeight*WindowUpscale, WindowTitle, nil, nil)
 	if err != nil {
