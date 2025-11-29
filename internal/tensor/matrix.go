@@ -168,22 +168,40 @@ func Rotate3DZ(angle float32) Matrix3x3 {
 	return Matrix3x3{cos, sin, 0, -sin, cos, 0, 0, 0, 1}
 }
 
-// Rotate3DXYZ returns a 3D rotation matrix about the X, Y, and Z axes.
+// Rotate3DXYZ returns a 3D body-sequence rotation matrix about the X -> Y -> Z axes.
 // This is an intrinsic rotation.
 //
-// [cos(x)cos(y), cos(x)sin(y)sin(z)-sin(x)cos(z), cos(x)sin(y)cos(z)+sin(x)sin(z)]
-// [sin(x)cos(y), sin(x)sin(y)sin(z)+cos(x)cos(z), sin(x)sin(y)cos(z)-cos(x)sin(z)]
-// [-sin(y), cos(y)sin(z), cos(y)cos(z)]
+// [cos(y)cos(z), -cos(y)sin(z), sin(y)]
+// [cos(x)sin(z)+sin(x)sin(y)cos(z), cos(x)cos(z)-sin(x)sin(y)sin(z), -sin(x)cos(y)]
+// [sin(x)sin(z)-cos(x)sin(y)cos(z), sin(x)cos(z)+cos(x)sin(y)sin(z), cos(x)cos(y)]
 func Rotate3DXYZ(xAngle, yAngle, zAngle float32) Matrix3x3 {
 	sinx, cosx := math32.Sincos(xAngle)
 	siny, cosy := math32.Sincos(yAngle)
 	sinz, cosz := math32.Sincos(zAngle)
 
-	return Matrix3x3{
-		cosx * cosy, sinx * cosy, -siny,
-		cosx*siny*sinz - sinx*cosz, sinx*siny*sinz + cosx*cosz, cosy * sinz,
-		cosx*siny*cosz + sinx*sinz, sinx*siny*cosz - cosx*sinz, cosy * cosz,
-	}
+	return Matrix3x3FromRows(
+		Vector3{cosy * cosz, -cosy * sinz, siny},
+		Vector3{cosx*sinz + sinx*siny*cosz, cosx*cosz - sinx*siny*sinz, -sinx * cosy},
+		Vector3{sinx*sinz - cosx*siny*cosz, sinx*cosz + cosx*siny*sinz, cosx * cosy},
+	)
+}
+
+// Rotate3DZYX returns a 3D body-sequence rotation matrix about the Z -> Y -> X axes.
+// This is an intrinsic rotation.
+//
+// [cos(y)cos(z), -cos(y)sin(z), sin(y)]
+// [sin(x)sin(y)cos(z)+cos(x)sin(z), -sin(x)sin(y)sin(x)+cos(x)cos(z), -sin(x)cos(y)]
+// [-cos(x)sin(y)cos(z)+sin(x)sin(z), cos(x)sin(x)sin(x)+sin(y)cos(z), cos(x)cos(y)]
+func Rotate3DZYX(xAngle, yAngle, zAngle float32) Matrix3x3 {
+	sinx, cosx := math32.Sincos(xAngle)
+	siny, cosy := math32.Sincos(yAngle)
+	sinz, cosz := math32.Sincos(zAngle)
+
+	return Matrix3x3FromRows(
+		Vector3{cosy * cosz, -cosy * sinz, siny},
+		Vector3{sinx*siny*cosz + cosx*sinz, -sinx*siny*sinz + cosx*cosz, -sinx * cosy},
+		Vector3{-cosx*siny*cosz + sinx*sinz, cosx*siny*sinz + sinx*cosz, cosx * cosy},
+	)
 }
 
 func (m1 Matrix3x3) Add(m2 Matrix3x3) Matrix3x3 {
