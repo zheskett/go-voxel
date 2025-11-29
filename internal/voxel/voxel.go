@@ -9,7 +9,7 @@ type BitArray struct {
 	bits []uint64
 }
 
-func BitFlagsInit(len int) BitArray {
+func BitArrayInit(len int) BitArray {
 	len = len / 64
 	if len%64 != 0 {
 		len += 1
@@ -35,6 +35,13 @@ func (bits *BitArray) Set(index int) {
 	bits.bits[bucket] |= mask
 }
 
+func (bits *BitArray) Reset(index int) {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	bits.bits[bucket] ^= ^mask
+}
+
 // Naive storage as an array
 type Voxels struct {
 	Z, Y, X  int
@@ -43,18 +50,24 @@ type Voxels struct {
 }
 
 func VoxelsInit(x, y, z int) Voxels {
-	presence := BitFlagsInit(z * y * z)
+	presence := BitArrayInit(z * y * z)
 	color := make([][3]byte, z*y*x)
 	for i := 0; i < z*y*x; i++ {
 		color[i] = [3]byte{0, 0, 0}
 	}
-	return Voxels{x, y, z, presence, color}
+	return Voxels{z, y, x, presence, color}
 }
 
 func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
 	idx := vox.Index(x, y, z)
 	vox.Presence.Set(idx)
 	vox.Color[idx] = [3]byte{r, g, b}
+}
+
+func (vox *Voxels) ResetVoxel(x, y, z int, r, g, b byte) {
+	idx := vox.Index(x, y, z)
+	vox.Presence.Reset(idx)
+	vox.Color[idx] = [3]byte{0, 0, 0}
 }
 
 func (vox *Voxels) Index(x, y, z int) int {

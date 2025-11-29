@@ -1,8 +1,6 @@
 package render
 
 import (
-	"fmt"
-
 	"github.com/chewxy/math32"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	te "github.com/zheskett/go-voxel/internal/tensor"
@@ -60,19 +58,11 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 		for j := 0; j < pix.Width; j++ {
 			dx, dy := float32(j)+0.5, float32(i)+0.5
 
-			// Does Go not have assert?
-			ndcx, ndcy := -(dx-hw)/hw, -(dy-hh)/hh
-			if ndcx > 1.01 || ndcx < -1.01 {
-				fmt.Printf("ndcx: %v\n", ndcx)
-				panic("math mistake")
-			}
-			if ndcy > 1.01 || ndcy < -1.01 {
-				fmt.Printf("ndcy: %v\n", ndcy)
-				panic("math mistake")
-			}
+			ndcx := (dx - hw) / hw
+			ndcy := -(dy - hh) / hh
 
 			// This is effectively finding the ray that points to that specific pixel
-			dcamr := dcamrdx.Mul(-ndcx)
+			dcamr := dcamrdx.Mul(ndcx)
 			dcamu := dcamudy.Mul(ndcy)
 			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalized()
 			ray := vxl.Ray{
