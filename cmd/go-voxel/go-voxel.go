@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"runtime"
 
+	"github.com/chewxy/math32"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/zheskett/go-voxel/internal/render"
+	ren "github.com/zheskett/go-voxel/internal/render"
+	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
 func init() {
@@ -16,14 +17,14 @@ func init() {
 }
 
 func main() {
-	rm := render.RenderManagerInit()
-	cam := render.CameraInit()
+	rm := ren.RenderManagerInit()
+	cam := ren.CameraInit()
 	cam.Movespeed = 0.25
 	cam.Lookspeed = 0.05
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
 	cam.Pos = mgl32.Vec3{16, 4, 16}
-	vox := render.VoxelsInit(64, 64, 64)
+	vox := vxl.VoxelsInit(64, 64, 64)
 	voxelDebugScene(&vox)
 
 	for {
@@ -31,12 +32,12 @@ func main() {
 		voxelRaymarchRender(&rm.Pixels, &cam, &vox)
 		rm.Render()
 		rm.CheckExit()
-		render.UpdateCamInputGLFW(&cam, rm.Window)
+		ren.UpdateCamInputGLFW(&cam, rm.Window)
 	}
 }
 
-func voxelRaymarchRender(pix *render.Pixels, cam *render.Camera, vox *render.Voxels) {
-	scale := float32(1.0 / math.Tan(float64(cam.Fov/2.0)))
+func voxelRaymarchRender(pix *ren.Pixels, cam *ren.Camera, vox *vxl.Voxels) {
+	scale := 1.0 / math32.Tan(cam.Fov/2.0)
 	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
 
 	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
@@ -62,7 +63,7 @@ func voxelRaymarchRender(pix *render.Pixels, cam *render.Camera, vox *render.Vox
 			dcamr := dcamrdx.Mul(-ndcx)
 			dcamu := dcamudy.Mul(ndcy)
 			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalize()
-			ray := render.Ray{
+			ray := vxl.Ray{
 				Origin: cam.Pos,
 				Direc:  raydirec,
 				Tmax:   64.0, // The ray can travel 64.0 units before terminating
@@ -77,7 +78,7 @@ func voxelRaymarchRender(pix *render.Pixels, cam *render.Camera, vox *render.Vox
 	}
 }
 
-func voxelDebugScene(vox *render.Voxels) {
+func voxelDebugScene(vox *vxl.Voxels) {
 	// Make a teal "ground"
 	for i := 0; i < vox.Z; i++ {
 		for j := 0; j < vox.X; j++ {
@@ -102,7 +103,7 @@ func voxelDebugScene(vox *render.Voxels) {
 	}
 }
 
-func renderDebugTri(pix *render.Pixels, cam *render.Camera) {
+func renderDebugTri(pix *ren.Pixels, cam *ren.Camera) {
 	pix.FillPixels(15, 25, 40)
 	vpos := []mgl32.Vec3{
 		{-0.5, 0.0, 3.0},
@@ -114,7 +115,7 @@ func renderDebugTri(pix *render.Pixels, cam *render.Camera) {
 		{0.0, 1.0, 0.7},
 		{0.7, 0.0, 1.0},
 	}
-	scale := float32(1.0 / math.Tan(float64(cam.Fov/2.0)))
+	scale := 1.0 / math32.Tan(cam.Fov/2.0)
 	hw, hh := float32(pix.Width/2), float32(pix.Height/2)
 
 	for i := range vpos {
@@ -135,15 +136,15 @@ func renderDebugTri(pix *render.Pixels, cam *render.Camera) {
 		vpos[i][1] = -vpos[i][1]*hh + hh
 	}
 
-	minx, maxx := 1e9, -1e9
-	miny, maxy := 1e9, -1e9
+	var minx, maxx float32 = 1e9, -1e9
+	var miny, maxy float32 = 1e9, -1e9
 	for _, vert := range vpos {
-		minx = math.Min(minx, float64(vert[0]))
-		miny = math.Min(miny, float64(vert[1]))
-		maxx = math.Max(maxx, float64(vert[0]))
-		maxy = math.Max(maxy, float64(vert[1]))
+		minx = math32.Min(minx, vert[0])
+		miny = math32.Min(miny, vert[1])
+		maxx = math32.Max(maxx, vert[0])
+		maxy = math32.Max(maxy, vert[1])
 	}
-	minx, maxx, miny, maxy = math.Max(minx, 0.0), math.Min(maxx, float64(pix.Width)), math.Max(miny, 0.0), math.Min(maxy, float64(pix.Height))
+	minx, maxx, miny, maxy = math32.Max(minx, 0.0), math32.Min(maxx, float32(pix.Width)), math32.Max(miny, 0.0), math32.Min(maxy, float32(pix.Height))
 
 	a, b, c := mgl32.Vec2{vpos[0][0], vpos[0][1]}, mgl32.Vec2{vpos[1][0], vpos[1][1]}, mgl32.Vec2{vpos[2][0], vpos[2][1]}
 	ba, cb, ac := b.Sub(a), c.Sub(b), a.Sub(c)

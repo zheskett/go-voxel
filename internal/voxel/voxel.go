@@ -1,6 +1,8 @@
-package render
+package voxel
 
-import "math"
+import (
+	"github.com/chewxy/math32"
+)
 
 // Naive storage as an array
 type Voxels struct {
@@ -39,9 +41,9 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 
 	// Ok, this is a huge mess and needs to be cleaned up
 	ox, oy, oz := origin.Elem()
-	x, y, z := int(math.Floor(float64(ox))), int(math.Floor(float64(oy))), int(math.Floor(float64(oz)))
+	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))
 	dx, dy, dz := direc.Elem()
-	adx, ady, adz := float32(math.Abs(float64(dx))), float32(math.Abs(float64(dy))), float32(math.Abs(float64(dz)))
+	adx, ady, adz := math32.Abs(dx), math32.Abs(dy), math32.Abs(dz)
 	invx, invy, invz := 1.0/adx, 1.0/ady, 1.0/adz
 	fractx, fracty, fractz := ox-float32(x), oy-float32(y), oz-float32(z)
 
