@@ -1,15 +1,19 @@
 package render
 
 import (
+	"fmt"
+
+	"github.com/chewxy/math32"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/go-gl/mathgl/mgl32"
+	ml "github.com/go-gl/mathgl/mgl32"
+	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
 type Camera struct {
-	Fvec      mgl32.Vec3
-	Rvec      mgl32.Vec3
-	Uvec      mgl32.Vec3
-	Pos       mgl32.Vec3
+	Fvec      ml.Vec3
+	Rvec      ml.Vec3
+	Uvec      ml.Vec3
+	Pos       ml.Vec3
 	Lookspeed float32
 	Movespeed float32
 	Fov       float32
@@ -18,18 +22,20 @@ type Camera struct {
 
 func CameraInit() Camera {
 	return Camera{
-		Fvec: mgl32.Vec3{0, 0, 1},
-		Rvec: mgl32.Vec3{1, 0, 0},
-		Uvec: mgl32.Vec3{0, 1, 0},
+		Fvec: ml.Vec3{0, 0, 1},
+		Rvec: ml.Vec3{1, 0, 0},
+		Uvec: ml.Vec3{0, 1, 0},
 	}
 }
 
-func (cam *Camera) UpdateRotation(rx, ry, rz float32) {
-	rot := cam.Fvec.Mul(rz).Add(cam.Uvec.Mul(ry)).Add(cam.Rvec.Mul(rx)).Mul(cam.Lookspeed)
-	att := mgl32.Mat3FromCols(cam.Rvec, cam.Uvec, cam.Fvec)
-	rox := mgl32.Rotate3DX(rot[0])
-	roy := mgl32.Rotate3DY(rot[1])
-	roz := mgl32.Rotate3DZ(rot[2])
+func (cam *Camera) UpdateRotation(rx, ry, rz float32, frame *FrameData) {
+	// Doesn't actually make sense to have dt if camera wasn't controlled with arrow keys
+	// Once we switch to mouse this needs to be removed
+	rot := cam.Fvec.Mul(rz).Add(cam.Uvec.Mul(ry)).Add(cam.Rvec.Mul(rx)).Mul(cam.Lookspeed).Mul(frame.Deltat)
+	att := ml.Mat3FromCols(cam.Rvec, cam.Uvec, cam.Fvec)
+	rox := ml.Rotate3DX(rot[0])
+	roy := ml.Rotate3DY(rot[1])
+	roz := ml.Rotate3DZ(rot[2])
 
 	att = roz.Mul3(roy).Mul3(rox).Mul3(att)
 	cam.Fvec = att.Col(2)
@@ -37,14 +43,57 @@ func (cam *Camera) UpdateRotation(rx, ry, rz float32) {
 	cam.Rvec = att.Col(0)
 }
 
-func (cam *Camera) UpdatePosition(dx, dy, dz float32) {
-	forward := cam.Fvec.Mul(dz * cam.Movespeed)
-	vertial := cam.Uvec.Mul(dy * cam.Movespeed)
-	lateral := cam.Rvec.Mul(dx * cam.Movespeed)
+func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *FrameData) {
+	movement := cam.Movespeed * frame.Deltat
+	forward := cam.Fvec.Mul(dz * movement)
+	vertial := cam.Uvec.Mul(dy * movement)
+	lateral := cam.Rvec.Mul(dx * movement)
 	cam.Pos = cam.Pos.Add(forward).Add(vertial).Add(lateral)
 }
 
-func UpdateCamInputGLFW(cam *Camera, window *glfw.Window) {
+func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
+	scale := 1.0 / math32.Tan(cam.Fov/2.0)
+	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
+
+	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
+	dcamudy := cam.Uvec.Mul(scale)
+
+	// Cast out a ray for each pixel on the screen
+	for i := 0; i < pix.Height; i++ {
+		for j := 0; j < pix.Width; j++ {
+			dx, dy := float32(j)+0.5, float32(i)+0.5
+
+			// Does Go not have assert?
+			ndcx, ndcy := -(dx-hw)/hw, -(dy-hh)/hh
+			if ndcx > 1.01 || ndcx < -1.01 {
+				fmt.Printf("ndcx: %v\n", ndcx)
+				panic("math mistake")
+			}
+			if ndcy > 1.01 || ndcy < -1.01 {
+				fmt.Printf("ndcy: %v\n", ndcy)
+				panic("math mistake")
+			}
+
+			// This is effectively finding the ray that points to that specific pixel
+			dcamr := dcamrdx.Mul(-ndcx)
+			dcamu := dcamudy.Mul(ndcy)
+			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalize()
+			ray := vxl.Ray{
+				Origin: cam.Pos,
+				Direc:  raydirec,
+				Tmax:   150.0, // The ray can travel 150 units before terminating
+			}
+
+			rayhit := vox.MarchRay(ray)
+			if rayhit.Hit {
+				color := rayhit.Color
+				pix.SetPixel(j, i, color[0], color[1], color[2])
+			}
+		}
+	}
+}
+
+func UpdateCamInputGLFW(cam *Camera, window *glfw.Window, frame *FrameData) {
 	rx, ry, rz := 0, 0, 0
 	tx, ty, tz := 0, 0, 0
 	if window.GetKey(glfw.KeyW) == glfw.Press {
@@ -83,6 +132,6 @@ func UpdateCamInputGLFW(cam *Camera, window *glfw.Window) {
 	if window.GetKey(glfw.KeyE) == glfw.Press {
 		rz++
 	}
-	cam.UpdateRotation(float32(rx), float32(ry), float32(rz))
-	cam.UpdatePosition(float32(tx), float32(ty), float32(tz))
+	cam.UpdateRotation(float32(rx), float32(ry), float32(rz), frame)
+	cam.UpdatePosition(float32(tx), float32(ty), float32(tz), frame)
 }

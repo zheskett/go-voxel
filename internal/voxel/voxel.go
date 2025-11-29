@@ -69,40 +69,38 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 	rayhit := RayHit{Hit: false}
 	origin, direc, tmax := ray.Origin, ray.Direc, ray.Tmax
 
-	// Ok, this is a huge mess and needs to be cleaned up
 	ox, oy, oz := origin.Elem()
-	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))
 	dx, dy, dz := direc.Elem()
+
+	// Ok, this is a huge mess and needs to be cleaned up
+	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))
 	adx, ady, adz := math32.Abs(dx), math32.Abs(dy), math32.Abs(dz)
 	invx, invy, invz := 1.0/adx, 1.0/ady, 1.0/adz
 	fractx, fracty, fractz := ox-float32(x), oy-float32(y), oz-float32(z)
 
 	var stepx, stepy, stepz int
-	var timex, timey, timez float32
+	timex, timey, timez := invx, invy, invz
 	if dx > 0 {
 		stepx = 1
-		timex = 1.0 - fractx
+		timex *= 1.0 - fractx
 	} else {
 		stepx = -1
-		timex = fractx
+		timex *= fractx
 	}
 	if dy > 0 {
 		stepy = 1
-		timey = 1.0 - fracty
+		timey *= 1.0 - fracty
 	} else {
 		stepy = -1
-		timey = fracty
+		timey *= fracty
 	}
 	if dz > 0 {
 		stepz = 1
-		timez = 1.0 - fractz
+		timez *= 1.0 - fractz
 	} else {
 		stepz = -1
-		timez = fractz
+		timez *= fractz
 	}
-	timex *= invx
-	timey *= invy
-	timez *= invz
 
 	time := float32(0.0)
 	for {

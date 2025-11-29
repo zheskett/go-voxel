@@ -12,6 +12,7 @@ type Ray struct {
 
 type RayHit struct {
 	Hit    bool
+	Time   float32
 	Color  [3]byte
 	Normal mgl32.Vec3
 }

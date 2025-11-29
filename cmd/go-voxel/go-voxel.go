@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/chewxy/math32"
-	"github.com/go-gl/mathgl/mgl32"
+	ml "github.com/go-gl/mathgl/mgl32"
 	ren "github.com/zheskett/go-voxel/internal/render"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
@@ -19,62 +18,22 @@ func init() {
 func main() {
 	rm := ren.RenderManagerInit()
 	cam := ren.CameraInit()
-	cam.Movespeed = 0.25
-	cam.Lookspeed = 0.05
+	cam.Movespeed = 15 // 15 voxels/s second walking
+	cam.Lookspeed = 2  // 2 rad/s rotation
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
-	cam.Pos = mgl32.Vec3{16, 4, 16}
-	vox := vxl.VoxelsInit(64, 64, 64)
+	cam.Pos = ml.Vec3{16, 4, 16}
+	vox := vxl.VoxelsInit(128, 128, 128)
+	fdata := ren.FrameDataInit()
 	voxelDebugScene(&vox)
 
 	for {
 		renderDebugTri(&rm.Pixels, &cam)
-		voxelRaymarchRender(&rm.Pixels, &cam, &vox)
+		cam.RenderVoxels(&vox, &rm.Pixels)
+		ren.UpdateCamInputGLFW(&cam, rm.Window, &fdata)
+		fdata.Update()
 		rm.Render()
 		rm.CheckExit()
-		ren.UpdateCamInputGLFW(&cam, rm.Window)
-	}
-}
-
-func voxelRaymarchRender(pix *ren.Pixels, cam *ren.Camera, vox *vxl.Voxels) {
-	scale := 1.0 / math32.Tan(cam.Fov/2.0)
-	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
-
-	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
-	dcamudy := cam.Uvec.Mul(scale)
-
-	// Cast out a ray for each pixel on the screen
-	for i := 0; i < pix.Height; i++ {
-		for j := 0; j < pix.Width; j++ {
-			dx, dy := float32(j)+0.5, float32(i)+0.5
-
-			// Does Go not have assert?
-			ndcx, ndcy := -(dx-hw)/hw, -(dy-hh)/hh
-			if ndcx > 1.01 || ndcx < -1.01 {
-				fmt.Printf("ndcx: %v\n", ndcx)
-				panic("math mistake")
-			}
-			if ndcy > 1.01 || ndcy < -1.01 {
-				fmt.Printf("ndcy: %v\n", ndcy)
-				panic("math mistake")
-			}
-
-			// This is effectively finding the ray that points to that specific pixel
-			dcamr := dcamrdx.Mul(-ndcx)
-			dcamu := dcamudy.Mul(ndcy)
-			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalize()
-			ray := vxl.Ray{
-				Origin: cam.Pos,
-				Direc:  raydirec,
-				Tmax:   100.0, // The ray can travel 100.0 units before terminating
-			}
-
-			rayhit := vox.MarchRay(ray)
-			if rayhit.Hit {
-				color := rayhit.Color
-				pix.SetPixel(j, i, color[0], color[1], color[2])
-			}
-		}
 	}
 }
 
@@ -87,6 +46,18 @@ func voxelDebugScene(vox *vxl.Voxels) {
 					vox.SetVoxel(i, k, j, 70, 200, 200)
 				} else {
 					vox.SetVoxel(i, k, j, 200, 30, 200)
+				}
+			}
+		}
+	}
+	// Same thing as above but on the roof with a more extreme slope
+	for i := 0; i < vox.Z; i++ {
+		for j := 0; j < vox.X; j++ {
+			for k := vox.Y - 1; k > vox.Y-(i+j)/4; k-- {
+				if (i+j)%2 == 0 {
+					vox.SetVoxel(i, k, j, 200, 3, 180)
+				} else {
+					vox.SetVoxel(i, k, j, 150, 200, 20)
 				}
 			}
 		}
@@ -107,24 +78,34 @@ func voxelDebugScene(vox *vxl.Voxels) {
 			}
 		}
 	}
+	// A larger checkerboard wall one one side
+	for i := 0; i < vox.X; i++ {
+		for j := 0; j < vox.Y; j++ {
+			if (i%2+j%2)%2 == 0 {
+				vox.SetVoxel(0, i, j, 30, 30, 30)
+			} else {
+				vox.SetVoxel(0, i, j, 200, 200, 200)
+			}
+		}
+	}
 	// Some green pillar
 	for i := 1; i < 16; i++ {
-		vox.SetVoxel(0, i, 0, 30, 255, 30)
+		vox.SetVoxel(5, i, 5, 30, 255, 30)
 		vox.SetVoxel(vox.X-1, i, 0, 30, 255, 30)
 		vox.SetVoxel(vox.X-1, i, vox.Z-1, 30, 255, 30)
-		vox.SetVoxel(5, i, 5, 30, 255, 30)
-		vox.SetVoxel(5, i, 9, 30, 255, 30)
+		vox.SetVoxel(50, i, 50, 30, 255, 30)
+		vox.SetVoxel(25, i, 9, 30, 255, 30)
 	}
 }
 
 func renderDebugTri(pix *ren.Pixels, cam *ren.Camera) {
 	pix.FillPixels(15, 25, 40)
-	vpos := []mgl32.Vec3{
+	vpos := []ml.Vec3{
 		{2.5, 32.0, 6.0},
 		{18.5, 16.0, 7.0},
 		{0.0, 32.0, 15.0},
 	}
-	vcol := []mgl32.Vec3{
+	vcol := []ml.Vec3{
 		{1.0, 0.7, 0.0},
 		{0.0, 1.0, 0.7},
 		{0.7, 0.0, 1.0},
@@ -136,7 +117,7 @@ func renderDebugTri(pix *ren.Pixels, cam *ren.Camera) {
 		// translate
 		vpos[i] = vpos[i].Sub(cam.Pos)
 		// relative to camera
-		vpos[i] = mgl32.Vec3{
+		vpos[i] = ml.Vec3{
 			vpos[i].Dot(cam.Rvec),
 			vpos[i].Dot(cam.Uvec),
 			vpos[i].Dot(cam.Fvec),
@@ -160,18 +141,18 @@ func renderDebugTri(pix *ren.Pixels, cam *ren.Camera) {
 	}
 	minx, maxx, miny, maxy = math32.Max(minx, 0.0), math32.Min(maxx, float32(pix.Width)), math32.Max(miny, 0.0), math32.Min(maxy, float32(pix.Height))
 
-	a, b, c := mgl32.Vec2{vpos[0][0], vpos[0][1]}, mgl32.Vec2{vpos[1][0], vpos[1][1]}, mgl32.Vec2{vpos[2][0], vpos[2][1]}
+	a, b, c := ml.Vec2{vpos[0][0], vpos[0][1]}, ml.Vec2{vpos[1][0], vpos[1][1]}, ml.Vec2{vpos[2][0], vpos[2][1]}
 	ba, cb, ac := b.Sub(a), c.Sub(b), a.Sub(c)
 	for i := miny; i < maxy; i++ {
 		for j := minx; j < maxx; j++ {
-			p := mgl32.Vec2{float32(j), float32(i)}
+			p := ml.Vec2{float32(j), float32(i)}
 			ap, bp, cp := p.Sub(a), p.Sub(b), p.Sub(c)
 
-			apb := mgl32.Mat2FromRows(ba, ap).Det()
-			bpc := mgl32.Mat2FromRows(cb, bp).Det()
-			cpa := mgl32.Mat2FromRows(ac, cp).Det()
+			apb := ml.Mat2FromRows(ba, ap).Det()
+			bpc := ml.Mat2FromRows(cb, bp).Det()
+			cpa := ml.Mat2FromRows(ac, cp).Det()
 			total := apb + bpc + cpa
-			weights := mgl32.Vec3{bpc, cpa, apb}.Mul(1.0 / total)
+			weights := ml.Vec3{bpc, cpa, apb}.Mul(1.0 / total)
 
 			if weights[0] > 0.0 && weights[1] > 0.0 && weights[2] > 0.0 {
 				x, y := int(j), int(i)
