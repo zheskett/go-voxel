@@ -1,17 +1,17 @@
 package voxel
 
 import (
-	"github.com/go-gl/mathgl/mgl32"
+	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
 type Ray struct {
-	Origin mgl32.Vec3
-	Direc  mgl32.Vec3
+	Origin te.Vector3
+	Dir    te.Vector3
 	Tmax   float32
 }
 
 type RayHit struct {
 	Hit    bool
 	Color  [3]byte
-	Normal mgl32.Vec3
+	Normal te.Vector3
 }

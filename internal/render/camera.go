@@ -3,13 +3,14 @@ package render
 import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
+	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
 type Camera struct {
-	Fvec      mgl32.Vec3
-	Rvec      mgl32.Vec3
-	Uvec      mgl32.Vec3
-	Pos       mgl32.Vec3
+	Fvec      te.Vector3
+	Rvec      te.Vector3
+	Uvec      te.Vector3
+	Pos       te.Vector3
 	Lookspeed float32
 	Movespeed float32
 	Fov       float32
@@ -18,18 +19,18 @@ type Camera struct {
 
 func CameraInit() Camera {
 	return Camera{
-		Fvec: mgl32.Vec3{0, 0, 1},
-		Rvec: mgl32.Vec3{1, 0, 0},
-		Uvec: mgl32.Vec3{0, 1, 0},
+		Fvec: te.Vector3{X: 0, Y: 0, Z: 1},
+		Rvec: te.Vector3{X: 1, Y: 0, Z: 0},
+		Uvec: te.Vector3{X: 0, Y: 1, Z: 0},
 	}
 }
 
 func (cam *Camera) UpdateRotation(rx, ry, rz float32) {
 	rot := cam.Fvec.Mul(rz).Add(cam.Uvec.Mul(ry)).Add(cam.Rvec.Mul(rx)).Mul(cam.Lookspeed)
-	att := mgl32.Mat3FromCols(cam.Rvec, cam.Uvec, cam.Fvec)
-	rox := mgl32.Rotate3DX(rot[0])
-	roy := mgl32.Rotate3DY(rot[1])
-	roz := mgl32.Rotate3DZ(rot[2])
+	att := te.Mat3FromCols(cam.Rvec, cam.Uvec, cam.Fvec)
+	rox := te.Rotate3DX(rot[0])
+	roy := te.Rotate3DY(rot[1])
+	roz := te.Rotate3DZ(rot[2])
 
 	att = roz.Mul3(roy).Mul3(rox).Mul3(att)
 	cam.Fvec = att.Col(2)

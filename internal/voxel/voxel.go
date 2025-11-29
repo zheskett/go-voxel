@@ -6,7 +6,7 @@ import (
 
 // Naive storage as an array
 type Voxels struct {
-	Z, Y, X  int
+	X, Y, Z  int
 	Presence []bool
 	Color    [][3]byte
 }
@@ -18,7 +18,7 @@ func VoxelsInit(x, y, z int) Voxels {
 		presense[i] = false
 		color[i] = [3]byte{0, 0, 0}
 	}
-	return Voxels{z, y, x, presense, color}
+	return Voxels{x, y, z, presense, color}
 }
 
 func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
@@ -37,12 +37,12 @@ func (vox *Voxels) Surrounds(x, y, z int) bool {
 
 func (vox *Voxels) MarchRay(ray Ray) RayHit {
 	rayhit := RayHit{Hit: false}
-	origin, direc, tmax := ray.Origin, ray.Direc, ray.Tmax
+	origin, direc, tmax := ray.Origin, ray.Dir, ray.Tmax
 
 	// Ok, this is a huge mess and needs to be cleaned up
-	ox, oy, oz := origin.Elem()
+	ox, oy, oz := origin.Elms()
 	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))
-	dx, dy, dz := direc.Elem()
+	dx, dy, dz := direc.Elms()
 	adx, ady, adz := math32.Abs(dx), math32.Abs(dy), math32.Abs(dz)
 	invx, invy, invz := 1.0/adx, 1.0/ady, 1.0/adz
 	fractx, fracty, fractz := ox-float32(x), oy-float32(y), oz-float32(z)
