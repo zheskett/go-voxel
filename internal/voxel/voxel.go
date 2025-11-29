@@ -38,22 +38,22 @@ func (bits *BitArray) Set(index int) {
 // Naive storage as an array
 type Voxels struct {
 	Z, Y, X  int
-	Presense BitArray
+	Presence BitArray
 	Color    [][3]byte
 }
 
 func VoxelsInit(x, y, z int) Voxels {
-	presense := BitFlagsInit(z * y * z)
+	presence := BitFlagsInit(z * y * z)
 	color := make([][3]byte, z*y*x)
 	for i := 0; i < z*y*x; i++ {
 		color[i] = [3]byte{0, 0, 0}
 	}
-	return Voxels{x, y, z, presense, color}
+	return Voxels{x, y, z, presence, color}
 }
 
 func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
 	idx := vox.Index(x, y, z)
-	vox.Presense.Set(idx)
+	vox.Presence.Set(idx)
 	vox.Color[idx] = [3]byte{r, g, b}
 }
 
@@ -109,7 +109,7 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 		}
 		if vox.Surrounds(x, y, z) {
 			idx := vox.Index(x, y, z)
-			if vox.Presense.Get(idx) {
+			if vox.Presence.Get(idx) {
 				rayhit.Color = vox.Color[idx]
 				rayhit.Hit = true
 				break

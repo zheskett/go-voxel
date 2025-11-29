@@ -43,9 +43,9 @@ func (cam *Camera) UpdateRotation(rx, ry, rz float32, frame *FrameData) {
 func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *FrameData) {
 	movement := cam.Movespeed * frame.Deltat
 	forward := cam.Fvec.Mul(dz * movement)
-	vertial := cam.Uvec.Mul(dy * movement)
+	vertical := cam.Uvec.Mul(dy * movement)
 	lateral := cam.Rvec.Mul(dx * movement)
-	cam.Pos = cam.Pos.Add(forward).Add(vertial).Add(lateral)
+	cam.Pos = cam.Pos.Add(forward).Add(vertical).Add(lateral)
 }
 
 func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
