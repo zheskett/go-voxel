@@ -4,6 +4,7 @@ package render
 import (
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -15,6 +16,21 @@ const (
 	WindowUpscale = 3
 	WindowTitle   = "Go Voxel"
 )
+
+// FrameData allows camera movements to be made independent of FPS for a smoother movements
+type FrameData struct {
+	Deltat   float32
+	Previous time.Time
+}
+
+func FrameDataInit() FrameData {
+	return FrameData{Previous: time.Now()}
+}
+
+func (data *FrameData) Update() {
+	data.Deltat = float32(time.Since(data.Previous).Seconds())
+	data.Previous = time.Now()
+}
 
 // Pixles contains the data for each pixel on the screen.
 // Every pixel if 4 bytes, RGBA

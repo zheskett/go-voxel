@@ -4,18 +4,48 @@ import (
 	"github.com/chewxy/math32"
 )
 
+// Compact storage for an array of bools
+type BitArray struct {
+	bits []uint64
+}
+
+func BitFlagsInit(len int) BitArray {
+	len = len / 64
+	if len%64 != 0 {
+		len += 1
+	}
+	bits := make([]uint64, len)
+	for i := range len {
+		bits[i] = 0
+	}
+	return BitArray{bits}
+}
+
+func (bits *BitArray) Get(index int) bool {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	return bits.bits[bucket]&mask != 0
+}
+
+func (bits *BitArray) Set(index int) {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	bits.bits[bucket] |= mask
+}
+
 // Naive storage as an array
 type Voxels struct {
-	X, Y, Z  int
-	Presence []bool
+	Z, Y, X  int
+	Presense BitArray
 	Color    [][3]byte
 }
 
 func VoxelsInit(x, y, z int) Voxels {
-	presense := make([]bool, z*y*x)
+	presense := BitFlagsInit(z * y * z)
 	color := make([][3]byte, z*y*x)
 	for i := 0; i < z*y*x; i++ {
-		presense[i] = false
 		color[i] = [3]byte{0, 0, 0}
 	}
 	return Voxels{x, y, z, presense, color}
@@ -23,7 +53,7 @@ func VoxelsInit(x, y, z int) Voxels {
 
 func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
 	idx := vox.Index(x, y, z)
-	vox.Presence[idx] = true
+	vox.Presense.Set(idx)
 	vox.Color[idx] = [3]byte{r, g, b}
 }
 
@@ -39,40 +69,38 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 	rayhit := RayHit{Hit: false}
 	origin, direc, tmax := ray.Origin, ray.Dir, ray.Tmax
 
+	ox, oy, oz := origin.Elem()
+	dx, dy, dz := direc.Elem()
+
 	// Ok, this is a huge mess and needs to be cleaned up
-	ox, oy, oz := origin.Elms()
 	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))
-	dx, dy, dz := direc.Elms()
 	adx, ady, adz := math32.Abs(dx), math32.Abs(dy), math32.Abs(dz)
 	invx, invy, invz := 1.0/adx, 1.0/ady, 1.0/adz
 	fractx, fracty, fractz := ox-float32(x), oy-float32(y), oz-float32(z)
 
 	var stepx, stepy, stepz int
-	var timex, timey, timez float32
+	timex, timey, timez := invx, invy, invz
 	if dx > 0 {
 		stepx = 1
-		timex = 1.0 - fractx
+		timex *= 1.0 - fractx
 	} else {
 		stepx = -1
-		timex = fractx
+		timex *= fractx
 	}
 	if dy > 0 {
 		stepy = 1
-		timey = 1.0 - fracty
+		timey *= 1.0 - fracty
 	} else {
 		stepy = -1
-		timey = fracty
+		timey *= fracty
 	}
 	if dz > 0 {
 		stepz = 1
-		timez = 1.0 - fractz
+		timez *= 1.0 - fractz
 	} else {
 		stepz = -1
-		timez = fractz
+		timez *= fractz
 	}
-	timex *= invx
-	timey *= invy
-	timez *= invz
 
 	time := float32(0.0)
 	for {
@@ -81,7 +109,7 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 		}
 		if vox.Surrounds(x, y, z) {
 			idx := vox.Index(x, y, z)
-			if vox.Presence[idx] {
+			if vox.Presense.Get(idx) {
 				rayhit.Color = vox.Color[idx]
 				rayhit.Hit = true
 				break
