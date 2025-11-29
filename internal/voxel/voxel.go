@@ -69,8 +69,8 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 	rayhit := RayHit{Hit: false}
 	origin, direc, tmax := ray.Origin, ray.Dir, ray.Tmax
 
-	ox, oy, oz := origin.Elem()
-	dx, dy, dz := direc.Elem()
+	ox, oy, oz := origin.Elms()
+	dx, dy, dz := direc.Elms()
 
 	// Ok, this is a huge mess and needs to be cleaned up
 	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))

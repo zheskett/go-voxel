@@ -4,8 +4,8 @@ import (
 	"runtime"
 
 	"github.com/chewxy/math32"
-	ml "github.com/go-gl/mathgl/mgl32"
 	ren "github.com/zheskett/go-voxel/internal/render"
+	te "github.com/zheskett/go-voxel/internal/tensor"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
@@ -22,7 +22,7 @@ func main() {
 	cam.Lookspeed = 2  // 2 rad/s rotation
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
-	cam.Pos = ml.Vec3{16, 4, 16}
+	cam.Pos = te.Vector3{X: 16, Y: 4, Z: 16}
 	vox := vxl.VoxelsInit(128, 128, 128)
 	fdata := ren.FrameDataInit()
 	voxelDebugScene(&vox)
@@ -100,15 +100,15 @@ func voxelDebugScene(vox *vxl.Voxels) {
 
 func renderDebugTri(pix *ren.Pixels, cam *ren.Camera) {
 	pix.FillPixels(15, 25, 40)
-	vpos := []ml.Vec3{
-		{2.5, 32.0, 6.0},
-		{18.5, 16.0, 7.0},
-		{0.0, 32.0, 15.0},
+	vpos := []te.Vector3{
+		{X: 2.5, Y: 32.0, Z: 6.0},
+		{X: 18.5, Y: 16.0, Z: 7.0},
+		{X: 0.0, Y: 32.0, Z: 15.0},
 	}
-	vcol := []ml.Vec3{
-		{1.0, 0.7, 0.0},
-		{0.0, 1.0, 0.7},
-		{0.7, 0.0, 1.0},
+	vcol := []te.Vector3{
+		{X: 1.0, Y: 0.7, Z: 0.0},
+		{X: 0.0, Y: 1.0, Z: 0.7},
+		{X: 0.7, Y: 0.0, Z: 1.0},
 	}
 	scale := 1.0 / math32.Tan(cam.Fov/2.0)
 	hw, hh := float32(pix.Width/2), float32(pix.Height/2)
@@ -117,48 +117,48 @@ func renderDebugTri(pix *ren.Pixels, cam *ren.Camera) {
 		// translate
 		vpos[i] = vpos[i].Sub(cam.Pos)
 		// relative to camera
-		vpos[i] = ml.Vec3{
-			vpos[i].Dot(cam.Rvec),
-			vpos[i].Dot(cam.Uvec),
-			vpos[i].Dot(cam.Fvec),
+		vpos[i] = te.Vector3{
+			X: vpos[i].Dot(cam.Rvec),
+			Y: vpos[i].Dot(cam.Uvec),
+			Z: vpos[i].Dot(cam.Fvec),
 		}
 		// perspective projection
-		vpos[i][0] /= vpos[i][2] * scale * cam.Aspect
-		vpos[i][1] /= vpos[i][2] * scale
+		vpos[i].X /= vpos[i].Z * scale * cam.Aspect
+		vpos[i].Y /= vpos[i].Z * scale
 
 		// get in ndc
-		vpos[i][0] = vpos[i][0]*hw + hw
-		vpos[i][1] = -vpos[i][1]*hh + hh
+		vpos[i].X = vpos[i].X*hw + hw
+		vpos[i].Y = -vpos[i].Y*hh + hh
 	}
 
 	var minx, maxx float32 = 1e9, -1e9
 	var miny, maxy float32 = 1e9, -1e9
 	for _, vert := range vpos {
-		minx = math32.Min(minx, vert[0])
-		miny = math32.Min(miny, vert[1])
-		maxx = math32.Max(maxx, vert[0])
-		maxy = math32.Max(maxy, vert[1])
+		minx = math32.Min(minx, vert.X)
+		miny = math32.Min(miny, vert.Y)
+		maxx = math32.Max(maxx, vert.X)
+		maxy = math32.Max(maxy, vert.Y)
 	}
 	minx, maxx, miny, maxy = math32.Max(minx, 0.0), math32.Min(maxx, float32(pix.Width)), math32.Max(miny, 0.0), math32.Min(maxy, float32(pix.Height))
 
-	a, b, c := ml.Vec2{vpos[0][0], vpos[0][1]}, ml.Vec2{vpos[1][0], vpos[1][1]}, ml.Vec2{vpos[2][0], vpos[2][1]}
+	a, b, c := te.Vector2{X: vpos[0].X, Y: vpos[0].Y}, te.Vector2{X: vpos[1].X, Y: vpos[1].Y}, te.Vector2{X: vpos[2].X, Y: vpos[2].Y}
 	ba, cb, ac := b.Sub(a), c.Sub(b), a.Sub(c)
 	for i := miny; i < maxy; i++ {
 		for j := minx; j < maxx; j++ {
-			p := ml.Vec2{float32(j), float32(i)}
+			p := te.Vector2{X: float32(j), Y: float32(i)}
 			ap, bp, cp := p.Sub(a), p.Sub(b), p.Sub(c)
 
-			apb := ml.Mat2FromRows(ba, ap).Det()
-			bpc := ml.Mat2FromRows(cb, bp).Det()
-			cpa := ml.Mat2FromRows(ac, cp).Det()
+			apb := te.Matrix2x2FromRows(ba, ap).Det()
+			bpc := te.Matrix2x2FromRows(cb, bp).Det()
+			cpa := te.Matrix2x2FromRows(ac, cp).Det()
 			total := apb + bpc + cpa
-			weights := ml.Vec3{bpc, cpa, apb}.Mul(1.0 / total)
+			weights := te.Vector3{X: bpc, Y: cpa, Z: apb}.Div(total)
 
-			if weights[0] > 0.0 && weights[1] > 0.0 && weights[2] > 0.0 {
+			if weights.X > 0.0 && weights.Y > 0.0 && weights.Z > 0.0 {
 				x, y := int(j), int(i)
-				color := vcol[0].Mul(weights[0]).Add(vcol[1].Mul(weights[1])).Add(vcol[2].Mul(weights[2])).Mul(255.0)
+				color := vcol[0].Mul(weights.X).Add(vcol[1].Mul(weights.Y)).Add(vcol[2].Mul(weights.Z)).Mul(255.0)
 				if pix.Surrounds(x, y) {
-					pix.SetPixel(x, y, byte(color[0]), byte(color[1]), byte(color[2]))
+					pix.SetPixel(x, y, byte(color.X), byte(color.Y), byte(color.Z))
 				}
 			}
 		}

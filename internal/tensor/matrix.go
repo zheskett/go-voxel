@@ -44,6 +44,16 @@ func (m Matrix2x2) Det() float32 {
 
 // End Matrix2x2 implements Matrix
 
+// Returns the row at the given index
+func (m Matrix2x2) Row(row int) Vector2 {
+	return Vector2{m[row], m[2+row]}
+}
+
+// Returns the column at the given index
+func (m Matrix2x2) Col(col int) Vector2 {
+	return Vector2{m[col*2], m[col*2+1]}
+}
+
 // Matrix2x2FromRows builds a new matrix from row vectors.
 func Matrix2x2FromRows(v1, v2 Vector2) Matrix2x2 {
 	return Matrix2x2{v1.X, v2.X, v1.Y, v2.Y}
@@ -107,6 +117,16 @@ func (m Matrix3x3) Det() float32 {
 }
 
 // End Matrix3x3 implements Matrix
+
+// Returns the row at the given index
+func (m Matrix3x3) Row(row int) Vector3 {
+	return Vector3{m[row], m[3+row], m[6+row]}
+}
+
+// Returns the column at the given index
+func (m Matrix3x3) Col(col int) Vector3 {
+	return Vector3{m[col*3], m[col*3+1], m[col*3+2]}
+}
 
 // Matrix3x3FromRows builds a new matrix from row vectors.
 func Matrix3x3FromRows(v1, v2, v3 Vector3) Matrix3x3 {

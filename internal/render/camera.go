@@ -5,15 +5,15 @@ import (
 
 	"github.com/chewxy/math32"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	ml "github.com/go-gl/mathgl/mgl32"
+	te "github.com/zheskett/go-voxel/internal/tensor"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
 type Camera struct {
-	Fvec      ml.Vec3
-	Rvec      ml.Vec3
-	Uvec      ml.Vec3
-	Pos       ml.Vec3
+	Fvec      te.Vector3
+	Rvec      te.Vector3
+	Uvec      te.Vector3
+	Pos       te.Vector3
 	Lookspeed float32
 	Movespeed float32
 	Fov       float32
@@ -22,9 +22,9 @@ type Camera struct {
 
 func CameraInit() Camera {
 	return Camera{
-		Fvec: ml.Vec3{0, 0, 1},
-		Rvec: ml.Vec3{1, 0, 0},
-		Uvec: ml.Vec3{0, 1, 0},
+		Fvec: te.Vector3{X: 0, Y: 0, Z: 1},
+		Rvec: te.Vector3{X: 1, Y: 0, Z: 0},
+		Uvec: te.Vector3{X: 0, Y: 1, Z: 0},
 	}
 }
 
@@ -32,12 +32,9 @@ func (cam *Camera) UpdateRotation(rx, ry, rz float32, frame *FrameData) {
 	// Doesn't actually make sense to have dt if camera wasn't controlled with arrow keys
 	// Once we switch to mouse this needs to be removed
 	rot := cam.Fvec.Mul(rz).Add(cam.Uvec.Mul(ry)).Add(cam.Rvec.Mul(rx)).Mul(cam.Lookspeed).Mul(frame.Deltat)
-	att := ml.Mat3FromCols(cam.Rvec, cam.Uvec, cam.Fvec)
-	rox := ml.Rotate3DX(rot[0])
-	roy := ml.Rotate3DY(rot[1])
-	roz := ml.Rotate3DZ(rot[2])
+	att := te.Matrix3x3FromCols(cam.Rvec, cam.Uvec, cam.Fvec)
+	att = te.Rotate3DXYZ(rot.X, rot.Y, rot.Z).Mul(att)
 
-	att = roz.Mul3(roy).Mul3(rox).Mul3(att)
 	cam.Fvec = att.Col(2)
 	cam.Uvec = att.Col(1)
 	cam.Rvec = att.Col(0)
@@ -77,10 +74,10 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 			// This is effectively finding the ray that points to that specific pixel
 			dcamr := dcamrdx.Mul(-ndcx)
 			dcamu := dcamudy.Mul(ndcy)
-			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalize()
+			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalized()
 			ray := vxl.Ray{
 				Origin: cam.Pos,
-				Direc:  raydirec,
+				Dir:    raydirec,
 				Tmax:   150.0, // The ray can travel 150 units before terminating
 			}
 
