@@ -31,6 +31,7 @@ func main() {
 		cam.RenderVoxels(&vox, &rm.Pixels)
 		ren.UpdateCamInputGLFW(&cam, rm.Window, &fdata)
 		fdata.Update()
+		fdata.ReportFps();
 		rm.Render()
 		rm.CheckExit()
 	}

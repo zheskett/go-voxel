@@ -2,6 +2,7 @@
 package render
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"time"
@@ -30,6 +31,10 @@ func FrameDataInit() FrameData {
 func (data *FrameData) Update() {
 	data.Deltat = float32(time.Since(data.Previous).Seconds())
 	data.Previous = time.Now()
+}
+
+func (data *FrameData) ReportFps() {
+	fmt.Printf("FPS: %.2f\n", 1.0/data.Deltat)
 }
 
 // Pixles contains the data for each pixel on the screen.

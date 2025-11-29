@@ -1,6 +1,8 @@
 package render
 
 import (
+	"sync"
+
 	"github.com/chewxy/math32"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	te "github.com/zheskett/go-voxel/internal/tensor"
@@ -54,28 +56,38 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 	dcamudy := cam.Uvec.Mul(scale)
 
 	// Cast out a ray for each pixel on the screen
+	var waiter sync.WaitGroup
 	for i := 0; i < pix.Height; i++ {
-		for j := 0; j < pix.Width; j++ {
-			dx, dy := float32(j)+0.5, float32(i)+0.5
+		waiter.Add(1)
+		go func() {
+			cam.parRenderBufferRow(pix, i, hw, hh, dcamrdx, dcamudy, vox)
+			defer waiter.Done()
+		}()
+	}
+	waiter.Wait()
+}
 
-			ndcx := (dx - hw) / hw
-			ndcy := -(dy - hh) / hh
+func (cam *Camera) parRenderBufferRow(pix *Pixels, i int, hw float32, hh float32, dcamrdx te.Vector3, dcamudy te.Vector3, vox *vxl.Voxels) {
+	for j := 0; j < pix.Width; j++ {
+		dx, dy := float32(j)+0.5, float32(i)+0.5
 
-			// This is effectively finding the ray that points to that specific pixel
-			dcamr := dcamrdx.Mul(ndcx)
-			dcamu := dcamudy.Mul(ndcy)
-			raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalized()
-			ray := vxl.Ray{
-				Origin: cam.Pos,
-				Dir:    raydirec,
-				Tmax:   150.0, // The ray can travel 150 units before terminating
-			}
+		ndcx := (dx - hw) / hw
+		ndcy := -(dy - hh) / hh
 
-			rayhit := vox.MarchRay(ray)
-			if rayhit.Hit {
-				color := rayhit.Color
-				pix.SetPixel(j, i, color[0], color[1], color[2])
-			}
+		// This is effectively finding the ray that points to that specific pixel
+		dcamr := dcamrdx.Mul(ndcx)
+		dcamu := dcamudy.Mul(ndcy)
+		raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalized()
+		ray := vxl.Ray{
+			Origin: cam.Pos,
+			Dir:    raydirec,
+			Tmax:   180.0, // The ray can travel 180 units before terminating
+		}
+
+		rayhit := vox.MarchRay(ray)
+		if rayhit.Hit {
+			color := rayhit.Color
+			pix.SetPixel(j, i, color[0], color[1], color[2])
 		}
 	}
 }
