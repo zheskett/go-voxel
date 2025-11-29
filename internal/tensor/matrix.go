@@ -130,10 +130,10 @@ func (m Matrix3x3) Col(col int) Vector3 {
 
 // Matrix3x3FromRows builds a new matrix from row vectors.
 func Matrix3x3FromRows(v1, v2, v3 Vector3) Matrix3x3 {
-	return Matrix3x3{v1.X, v1.Y, v1.Z, v2.X, v2.Y, v2.Z, v3.X, v3.Y, v3.Z}
+	return Matrix3x3{v1.X, v2.X, v3.X, v1.Y, v2.Y, v3.Y, v1.Z, v2.Z, v3.Z}
 }
 
-// Matrix3x3FromCols builds a new matrix from columnvectors.
+// Matrix3x3FromCols builds a new matrix from column vectors.
 func Matrix3x3FromCols(v1, v2, v3 Vector3) Matrix3x3 {
 	return Matrix3x3{v1.X, v1.Y, v1.Z, v2.X, v2.Y, v2.Z, v3.X, v3.Y, v3.Z}
 }
