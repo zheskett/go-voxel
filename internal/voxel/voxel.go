@@ -4,6 +4,32 @@ import (
 	"github.com/chewxy/math32"
 )
 
+type BitFlags struct {
+	bits []uint64
+}
+
+func BitFlagsInit(x, y, z int) BitFlags {
+	len := x*y*z/64 + 1
+	bits := make([]uint64, len)
+	for i := range len {
+		bits[i] = 0
+	}
+	return BitFlags{bits}
+}
+
+func (bits *BitFlags) Get(index int) bool {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	return bits.bits[bucket]^mask != 0
+}
+
+func (bits *BitFlags) Set(index int) {
+	bucket := index / 64
+	shift := index % 64
+	bits.bits[bucket] |= uint64(1) << shift
+}
+
 // Naive storage as an array
 type Voxels struct {
 	Z, Y, X  int

@@ -106,9 +106,9 @@ func voxelDebugScene(vox *vxl.Voxels) {
 func renderDebugTri(pix *ren.Pixels, cam *ren.Camera) {
 	pix.FillPixels(15, 25, 40)
 	vpos := []mgl32.Vec3{
-		{-0.5, 0.0, 3.0},
-		{0.5, 0.0, 3.0},
-		{0.0, 1.0, 3.0},
+		{2.5, 4.0, 6.0},
+		{7.5, 4.0, 7.0},
+		{6.0, 7.0, 8.0},
 	}
 	vcol := []mgl32.Vec3{
 		{1.0, 0.7, 0.0},
