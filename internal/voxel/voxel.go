@@ -4,44 +4,48 @@ import (
 	"github.com/chewxy/math32"
 )
 
-type BitFlags struct {
+// Compact storage for an array of bools
+type BitArray struct {
 	bits []uint64
 }
 
-func BitFlagsInit(x, y, z int) BitFlags {
-	len := x*y*z/64 + 1
+func BitFlagsInit(len int) BitArray {
+	len = len / 64
+	if len%64 != 0 {
+		len += 1
+	}
 	bits := make([]uint64, len)
 	for i := range len {
 		bits[i] = 0
 	}
-	return BitFlags{bits}
+	return BitArray{bits}
 }
 
-func (bits *BitFlags) Get(index int) bool {
+func (bits *BitArray) Get(index int) bool {
 	bucket := index / 64
 	shift := index % 64
 	mask := uint64(1) << shift
-	return bits.bits[bucket]^mask != 0
+	return bits.bits[bucket]&mask != 0
 }
 
-func (bits *BitFlags) Set(index int) {
+func (bits *BitArray) Set(index int) {
 	bucket := index / 64
 	shift := index % 64
-	bits.bits[bucket] |= uint64(1) << shift
+	mask := uint64(1) << shift
+	bits.bits[bucket] |= mask
 }
 
 // Naive storage as an array
 type Voxels struct {
 	Z, Y, X  int
-	Presence []bool
+	Presense BitArray
 	Color    [][3]byte
 }
 
 func VoxelsInit(x, y, z int) Voxels {
-	presense := make([]bool, z*y*x)
+	presense := BitFlagsInit(z * y * z)
 	color := make([][3]byte, z*y*x)
 	for i := 0; i < z*y*x; i++ {
-		presense[i] = false
 		color[i] = [3]byte{0, 0, 0}
 	}
 	return Voxels{z, y, x, presense, color}
@@ -49,7 +53,7 @@ func VoxelsInit(x, y, z int) Voxels {
 
 func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
 	idx := vox.Index(x, y, z)
-	vox.Presence[idx] = true
+	vox.Presense.Set(idx)
 	vox.Color[idx] = [3]byte{r, g, b}
 }
 
@@ -107,7 +111,7 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 		}
 		if vox.Surrounds(x, y, z) {
 			idx := vox.Index(x, y, z)
-			if vox.Presence[idx] {
+			if vox.Presense.Get(idx) {
 				rayhit.Color = vox.Color[idx]
 				rayhit.Hit = true
 				break

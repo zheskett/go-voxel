@@ -66,7 +66,7 @@ func voxelRaymarchRender(pix *ren.Pixels, cam *ren.Camera, vox *vxl.Voxels) {
 			ray := vxl.Ray{
 				Origin: cam.Pos,
 				Direc:  raydirec,
-				Tmax:   64.0, // The ray can travel 64.0 units before terminating
+				Tmax:   100.0, // The ray can travel 100.0 units before terminating
 			}
 
 			rayhit := vox.MarchRay(ray)
@@ -79,10 +79,16 @@ func voxelRaymarchRender(pix *ren.Pixels, cam *ren.Camera, vox *vxl.Voxels) {
 }
 
 func voxelDebugScene(vox *vxl.Voxels) {
-	// Make a teal "ground"
+	// Make a teal and purple checkerboard "ground"
 	for i := 0; i < vox.Z; i++ {
 		for j := 0; j < vox.X; j++ {
-			vox.SetVoxel(i, 0, j, 70, 255, 255)
+			for k := 0; k < 1+(i+j)/16; k++ {
+				if (i+j)%2 == 0 {
+					vox.SetVoxel(i, k, j, 70, 200, 200)
+				} else {
+					vox.SetVoxel(i, k, j, 200, 30, 200)
+				}
+			}
 		}
 	}
 	// Floating red cube
@@ -93,8 +99,16 @@ func voxelDebugScene(vox *vxl.Voxels) {
 			}
 		}
 	}
+	// Floating orange cube
+	for i := 32; i < 40; i++ {
+		for j := 32; j < 40; j++ {
+			for k := 32; k < 40; k++ {
+				vox.SetVoxel(i, j, k, 200, 100, 100)
+			}
+		}
+	}
 	// Some green pillar
-	for i := 1; i < 6; i++ {
+	for i := 1; i < 16; i++ {
 		vox.SetVoxel(0, i, 0, 30, 255, 30)
 		vox.SetVoxel(vox.X-1, i, 0, 30, 255, 30)
 		vox.SetVoxel(vox.X-1, i, vox.Z-1, 30, 255, 30)
@@ -106,9 +120,9 @@ func voxelDebugScene(vox *vxl.Voxels) {
 func renderDebugTri(pix *ren.Pixels, cam *ren.Camera) {
 	pix.FillPixels(15, 25, 40)
 	vpos := []mgl32.Vec3{
-		{2.5, 4.0, 6.0},
-		{7.5, 4.0, 7.0},
-		{6.0, 7.0, 8.0},
+		{2.5, 32.0, 6.0},
+		{18.5, 16.0, 7.0},
+		{0.0, 32.0, 15.0},
 	}
 	vcol := []mgl32.Vec3{
 		{1.0, 0.7, 0.0},
