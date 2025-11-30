@@ -89,10 +89,17 @@ func (cam *Camera) parRenderBufferRow(pix *Pixels, row int, hw float32, hh float
 			Tmax:   cam.RenderDistance, // Max distance a ray can travel before terminating
 		}
 
+		// TODO:
+		lightdir := te.Vec3(1, -3, 7).Normalized() // Just set this randomly to see if normals work
 		rayhit := vox.MarchRay(ray)
 		if rayhit.Hit {
 			color := rayhit.Color
-			pix.SetPixel(column, row, color[0], color[1], color[2])
+			intensity := lightdir.Dot(rayhit.Normal)
+			if intensity < 0.1 {
+				intensity = 0.1 // Limit dimness to 10%
+			}
+			floatcolor := te.Vec3(float32(color[0]), float32(color[1]), float32(color[2])).Mul(intensity)
+			pix.SetPixel(column, row, byte(floatcolor.X), byte(floatcolor.Y), byte(floatcolor.Z))
 		}
 	}
 }
