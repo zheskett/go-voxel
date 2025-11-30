@@ -116,7 +116,8 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 		timez *= fractz
 	}
 
-	// Go doesn't have enums?? So, 0 means something failed, x = 1, y = 2, z = 3
+	// Go doesn't have enums??
+	// So, x = 1, y = 2, z = 3
 	side := 0
 	time := float32(0.0)
 	for {
@@ -137,7 +138,7 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 				case 3:
 					rayhit.Normal = tensor.Vec3(0, 0, 1).Mul(float32(stepz))
 				default:
-					panic("Ray collision side not set")
+					rayhit.Normal = tensor.Vec3(0, 0, 0)
 				}
 				break
 			}
