@@ -2,6 +2,7 @@ package voxel
 
 import (
 	"github.com/chewxy/math32"
+	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
 // Compact storage for an array of bools
@@ -115,6 +116,8 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 		timez *= fractz
 	}
 
+	// Go doesn't have enums?? So, 0 means something failed, x = 1, y = 2, z = 3
+	side := 0
 	time := float32(0.0)
 	for {
 		if time > tmax {
@@ -123,8 +126,19 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 		if vox.Surrounds(x, y, z) {
 			idx := vox.Index(x, y, z)
 			if vox.Presence.Get(idx) {
-				rayhit.Color = vox.Color[idx]
 				rayhit.Hit = true
+				rayhit.Time = time
+				rayhit.Color = vox.Color[idx]
+				switch side {
+				case 1:
+					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(float32(stepx))
+				case 2:
+					rayhit.Normal = tensor.Vec3(0, 1, 0).Mul(float32(stepy))
+				case 3:
+					rayhit.Normal = tensor.Vec3(0, 0, 1).Mul(float32(stepz))
+				default:
+					panic("Ray collision side not set")
+				}
 				break
 			}
 		}
@@ -134,20 +148,24 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 				x += stepx
 				time = timex
 				timex += invx
+				side = 1
 			} else {
 				z += stepz
 				time = timez
 				timez += invz
+				side = 3
 			}
 		} else {
 			if timey < timez {
 				y += stepy
 				time = timey
 				timey += invy
+				side = 2
 			} else {
 				z += stepz
 				time = timez
 				timez += invz
+				side = 3
 			}
 		}
 	}

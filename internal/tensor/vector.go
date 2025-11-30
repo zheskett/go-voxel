@@ -9,9 +9,19 @@ type Vector2 struct {
 	X, Y float32 // X coordinate
 }
 
+// Creates a 2D Vector from components
+func Vec2(x, y float32) Vector2 {
+	return Vector2{X: x, Y: y}
+}
+
 // A 3D Vector
 type Vector3 struct {
 	X, Y, Z float32 // X coordinate
+}
+
+// Creates a 3D Vector from components
+func Vec3(x, y, z float32) Vector3 {
+	return Vector3{X: x, Y: y, Z: z}
 }
 
 // Start Vector2 Functions

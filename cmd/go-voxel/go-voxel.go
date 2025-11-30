@@ -24,7 +24,7 @@ func main() {
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
 	cam.Pos = te.Vector3{X: 16, Y: 4, Z: 16}
-	cam.RenderDistance = 256.0
+	cam.RenderDistance = 128.0
 	vox := vxl.VoxelsInit(256, 256, 256)
 	fdata := ren.FrameDataInit()
 	voxelDebugScene(&vox)
