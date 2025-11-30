@@ -23,9 +23,11 @@ func main() {
 	cam.Lookspeed = 2  // 2 rad/s rotation
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
-	cam.Pos = te.Vector3{X: 16, Y: 4, Z: 16}
-	cam.RenderDistance = 128.0
+	cam.Pos = te.Vec3(16, 4, 16)
+	cam.RenderDistance = 256.0
 	vox := vxl.VoxelsInit(256, 256, 256)
+	vox.Light = te.Vec3(64, 32, 96)
+	vox.LightIntensity = 150.0
 	fdata := ren.FrameDataInit()
 	voxelDebugScene(&vox)
 	fmt.Printf("total voxels: %d\n", vox.X*vox.Y*vox.Z)
@@ -102,11 +104,11 @@ func voxelDebugScene(vox *vxl.Voxels) {
 	}
 	// A big ominous ball
 	// Also a bunch of random colored voxels
-	center, radius := te.Vector3{X: 64, Y: 64, Z: 64}, 24
+	center, radius := te.Vec3(64, 64, 64), 24
 	for i := 0; i < vox.Z; i++ {
 		for j := 0; j < vox.Y; j++ {
 			for k := 0; k < vox.X; k++ {
-				point := te.Vector3{X: float32(k), Y: float32(j), Z: float32(i)}
+				point := te.Vec3(float32(k), float32(j), float32(i))
 				if center.Sub(point).LenSqr() < float32(radius*radius) {
 					vox.SetVoxel(k, j, i, 20, 20, 20)
 				}
