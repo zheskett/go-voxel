@@ -54,7 +54,7 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
 
 	// These kinds of things and some stuff in 'vox.MarchRay' can be pre-computed
-	// instead of doing it again everytime for every pixel
+	// instead of doing it again every time for every pixel
 	// Need to find a nice way to package all that
 	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
 	dcamudy := cam.Uvec.Mul(scale)
@@ -72,7 +72,7 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 func (cam *Camera) parRenderBufferRow(pix *Pixels, row int, hw float32, hh float32, dcamrdx te.Vector3, dcamudy te.Vector3, vox *vxl.Voxels) {
 	// This takes a lot of inputs and could be more bundled up once we find everything required
 
-	// Iterate each colum of the pixel row and cast a ray
+	// Iterate each column of the pixel row and cast a ray
 	for column := 0; column < pix.Width; column++ {
 		dx, dy := float32(column)+0.5, float32(row)+0.5
 
