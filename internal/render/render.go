@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	TextureWidth  = 320
-	TextureHeight = 240
+	TextureWidth  = 400
+	TextureHeight = 300
 	WindowUpscale = 3
 	WindowTitle   = "Go Voxel"
 )

@@ -10,14 +10,15 @@ import (
 )
 
 type Camera struct {
-	Fvec      te.Vector3
-	Rvec      te.Vector3
-	Uvec      te.Vector3
-	Pos       te.Vector3
-	Lookspeed float32
-	Movespeed float32
-	Fov       float32
-	Aspect    float32
+	Fvec           te.Vector3
+	Rvec           te.Vector3
+	Uvec           te.Vector3
+	Pos            te.Vector3
+	Lookspeed      float32
+	Movespeed      float32
+	Fov            float32
+	Aspect         float32
+	RenderDistance float32
 }
 
 func CameraInit() Camera {
@@ -52,24 +53,28 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 	scale := 1.0 / math32.Tan(cam.Fov/2.0)
 	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
 
+	// These kinds of things and some stuff in 'vox.MarchRay' can be pre-computed
+	// instead of doing it again everytime for every pixel
+	// Need to find a nice way to package all that
 	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
 	dcamudy := cam.Uvec.Mul(scale)
 
-	// Cast out a ray for each pixel on the screen
+	// Iterate and spawn a thread for each row of the pixel buffer
 	var waiter sync.WaitGroup
-	for i := 0; i < pix.Height; i++ {
-		waiter.Add(1)
-		go func() {
-			cam.parRenderBufferRow(pix, i, hw, hh, dcamrdx, dcamudy, vox)
-			defer waiter.Done()
-		}()
+	for row := 0; row < pix.Height; row++ {
+		waiter.Go(func() {
+			cam.parRenderBufferRow(pix, row, hw, hh, dcamrdx, dcamudy, vox)
+		})
 	}
 	waiter.Wait()
 }
 
-func (cam *Camera) parRenderBufferRow(pix *Pixels, i int, hw float32, hh float32, dcamrdx te.Vector3, dcamudy te.Vector3, vox *vxl.Voxels) {
-	for j := 0; j < pix.Width; j++ {
-		dx, dy := float32(j)+0.5, float32(i)+0.5
+func (cam *Camera) parRenderBufferRow(pix *Pixels, row int, hw float32, hh float32, dcamrdx te.Vector3, dcamudy te.Vector3, vox *vxl.Voxels) {
+	// This takes a lot of inputs and could be more bundled up once we find everything required
+
+	// Iterate each colum of the pixel row and cast a ray
+	for column := 0; column < pix.Width; column++ {
+		dx, dy := float32(column)+0.5, float32(row)+0.5
 
 		ndcx := (dx - hw) / hw
 		ndcy := -(dy - hh) / hh
@@ -81,13 +86,13 @@ func (cam *Camera) parRenderBufferRow(pix *Pixels, i int, hw float32, hh float32
 		ray := vxl.Ray{
 			Origin: cam.Pos,
 			Dir:    raydirec,
-			Tmax:   180.0, // The ray can travel 180 units before terminating
+			Tmax:   cam.RenderDistance, // Max distance a ray can travel before terminating
 		}
 
 		rayhit := vox.MarchRay(ray)
 		if rayhit.Hit {
 			color := rayhit.Color
-			pix.SetPixel(j, i, color[0], color[1], color[2])
+			pix.SetPixel(column, row, color[0], color[1], color[2])
 		}
 	}
 }

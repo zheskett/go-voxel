@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"math/rand"
 	"runtime"
 
 	ren "github.com/zheskett/go-voxel/internal/render"
@@ -22,16 +24,18 @@ func main() {
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
 	cam.Pos = te.Vector3{X: 16, Y: 4, Z: 16}
-	vox := vxl.VoxelsInit(128, 128, 128)
+	cam.RenderDistance = 256.0
+	vox := vxl.VoxelsInit(256, 256, 256)
 	fdata := ren.FrameDataInit()
 	voxelDebugScene(&vox)
+	fmt.Printf("total voxels: %d\n", vox.X*vox.Y*vox.Z)
 
 	for {
 		rm.Pixels.FillPixels(15, 25, 40)
 		cam.RenderVoxels(&vox, &rm.Pixels)
 		ren.UpdateCamInputGLFW(&cam, rm.Window, &fdata)
 		fdata.Update()
-		fdata.ReportFps();
+		fdata.ReportFps()
 		rm.Render()
 		rm.CheckExit()
 	}
@@ -95,5 +99,21 @@ func voxelDebugScene(vox *vxl.Voxels) {
 		vox.SetVoxel(vox.X-1, i, vox.Z-1, 30, 255, 30)
 		vox.SetVoxel(50, i, 50, 30, 255, 30)
 		vox.SetVoxel(25, i, 9, 30, 255, 30)
+	}
+	// A big ominous ball
+	// Also a bunch of random colored voxels
+	center, radius := te.Vector3{X: 64, Y: 64, Z: 64}, 24
+	for i := 0; i < vox.Z; i++ {
+		for j := 0; j < vox.Y; j++ {
+			for k := 0; k < vox.X; k++ {
+				point := te.Vector3{X: float32(k), Y: float32(j), Z: float32(i)}
+				if center.Sub(point).LenSqr() < float32(radius*radius) {
+					vox.SetVoxel(k, j, i, 20, 20, 20)
+				}
+				if rand.Intn(2500) == 0 {
+					vox.SetVoxel(k, j, i, byte(rand.Intn(255)), byte(rand.Intn(255)), byte(rand.Intn(255)))
+				}
+			}
+		}
 	}
 }
