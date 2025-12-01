@@ -82,14 +82,37 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 
 				rayhit := vox.MarchRay(ray)
 				if rayhit.Hit {
-					// All this lighting will be pulled into its own module
-					lightvec := rayhit.Position.Sub(vox.Light)
-					length := lightvec.Len()
-					intensity := lightvec.Div(length).Dot(rayhit.Normal) * vox.LightIntensity / length
-					if intensity < 0.025 {
-						intensity = 0.025 // Limit dimness to 2.5 %
-					}
+					intensity := float32(1.0)
 					color := rayhit.Color
+
+					lightvec := vox.Light.Sub(rayhit.Position)
+					lightdist := lightvec.Len()
+					lightdir := lightvec.Normalized()
+
+					if lightdist < 1e-6 || lightdist > 1e6 {
+						panic("extreme value")
+					}
+
+					shadowrayorigin := rayhit.Position.Add(lightdir.Mul(0.01))
+					shadowray := vxl.Ray{
+						Origin: shadowrayorigin,
+						Dir:    lightdir,
+						Tmax:   lightdist,
+					}
+					shadowhit := vox.MarchRay(shadowray)
+
+					inlight := !shadowhit.Hit
+
+					if inlight {
+						intensity = rayhit.Normal.Dot(lightdir) * vox.LightIntensity / lightdist
+					} else {
+						intensity = 0.025
+					}
+
+					if intensity < 0.1 {
+						intensity = 0.1
+					}
+
 					floatcolor := te.Vec3(float32(color[0]), float32(color[1]), float32(color[2])).Mul(intensity)
 					if floatcolor.X > 255 {
 						floatcolor.X = 255

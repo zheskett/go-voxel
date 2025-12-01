@@ -88,6 +88,13 @@ func (m1 Matrix2x2) Mul(m2 Matrix2x2) Matrix2x2 {
 	}
 }
 
+func (m Matrix2x2) MulVec(v Vector2) Vector2 {
+	return Vector2{
+		m[0]*v.X + m[2]*v.Y,
+		m[1]*v.X + m[3]*v.Y,
+	}
+}
+
 // End Matrix2x2 Functions
 
 // Start Matrix3x3 Functions
@@ -229,6 +236,14 @@ func (m1 Matrix3x3) Mul(m2 Matrix3x3) Matrix3x3 {
 		m1[0]*m2[6] + m1[3]*m2[7] + m1[6]*m2[8],
 		m1[1]*m2[6] + m1[4]*m2[7] + m1[7]*m2[8],
 		m1[2]*m2[6] + m1[5]*m2[7] + m1[8]*m2[8],
+	}
+}
+
+func (m Matrix3x3) MulVec(v Vector3) Vector3 {
+	return Vector3{
+		m[0]*v.X + m[3]*v.Y + m[6]*v.Z,
+		m[1]*v.X + m[4]*v.Y + m[7]*v.Z,
+		m[2]*v.X + m[5]*v.Y + m[8]*v.Z,
 	}
 }
 
