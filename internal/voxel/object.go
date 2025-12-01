@@ -9,10 +9,9 @@ import (
 )
 
 type VoxelObj struct {
-	// Position of the object in the world
-	XPos, YPos, ZPos int
-	Presence         BitArray
-	Color            [3]byte
+	resolution int
+	Presence   BitArray
+	Color      [3]byte
 }
 
 type ConnectivityDistance int
@@ -23,19 +22,19 @@ const (
 )
 
 // Same as Voxelize(ParseObj(path), ...) basically
-func VoxelizePath(path string, t ConnectivityDistance, resolution int, color [3]byte, x, y, z int) (VoxelObj, error) {
+func VoxelizePath(path string, t ConnectivityDistance, resolution int, color [3]byte) (VoxelObj, error) {
 	obj, err := parser.ParseObj(path)
 	if err != nil {
 		return VoxelObj{}, err
 	}
 
-	return Voxelize(obj, t, resolution, color, x, y, z)
+	return Voxelize(obj, t, resolution, color)
 }
 
 // Turns an obj into voxels
 //
 // Algorithm from https://web.eecs.utk.edu/~huangj/papers/polygon.pdf
-func Voxelize(obj parser.Obj, t ConnectivityDistance, resolution int, color [3]byte, x, y, z int) (VoxelObj, error) {
+func Voxelize(obj parser.Obj, t ConnectivityDistance, resolution int, color [3]byte) (VoxelObj, error) {
 	if resolution < 1 {
 		return VoxelObj{}, fmt.Errorf("Invalid Resolution: %v", resolution)
 	}
@@ -50,20 +49,18 @@ func Voxelize(obj parser.Obj, t ConnectivityDistance, resolution int, color [3]b
 		boundRad *= math32.Sqrt(3.0)
 	}
 
-	vertSet := calcVertSet(obj, boundRad, vLen, resolution)       // S_v
-	edgeSet := BitArrayInit(resolution * resolution * resolution) // S_e
-	bodySet := BitArrayInit(resolution * resolution * resolution) // S_b
+	set := BitArrayInit(resolution * resolution * resolution)
+	calcVertSet(&set, obj, boundRad, vLen, resolution) // S_v
+	calcEdgeSet(&set, obj, boundRad, vLen, resolution) // S_e
 
-	for i := range vertSet.bits {
-		vertSet.bits[i] = vertSet.bits[i] | edgeSet.bits[i] | bodySet.bits[i]
-	}
-
-	return VoxelObj{x, y, z, vertSet, color}, nil
+	return VoxelObj{resolution, set, color}, nil
 }
 
-func calcVertSet(obj parser.Obj, boundRad, vLen float32, resolution int) BitArray {
-	set := BitArrayInit(resolution * resolution * resolution)
+func (vObj *VoxelObj) Index(x, y, z int) int {
+	return bitIdx(x, y, z, vObj.resolution)
+}
 
+func calcVertSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resolution int) {
 	// All voxels whose voxel centers fall inside R_c are added to S_v
 	for _, v := range obj.Vertices {
 		cX, cY, cZ := idxPos(v, resolution)
@@ -77,8 +74,16 @@ func calcVertSet(obj parser.Obj, boundRad, vLen float32, resolution int) BitArra
 			}
 		}
 	}
+}
 
-	return set
+func calcEdgeSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resolution int) {
+	// All voxels whose voxel center fall inside a cylinder with radius R_c
+	// and length L, where L is the length of the edge, are added to S_e
+	for _, e := range obj.Edges {
+		v1, v2 := obj.Vertices[e[0]], obj.Vertices[e[1]]
+		_ = v2.Sub(v1).Normalized().Mul(vLen)
+
+	}
 }
 
 func bitIdx(x, y, z, resolution int) int {
@@ -110,4 +115,17 @@ func insideSphere(x, y, z int, radius float32, center te.Vector3, vLen float32, 
 
 	vPos := toPos(x, y, z, vLen, resolution)
 	return vPos.Sub(center).LenSqr() < radius*radius
+}
+
+func insideCylinder(x, y, z int, radius float32, a, b te.Vector3, vLen float32, resolution int) bool {
+	r := resolution
+	if !(x < r && y < r && z < r && x >= 0 && y >= 0 && z >= 0) {
+		return false
+	}
+
+	vPos := toPos(x, y, z, vLen, resolution)
+	e := b.Sub(a)
+	return vPos.Sub(a).Dot(e) > 0 &&
+		vPos.Sub(b).Dot(e) < 0 &&
+		vPos.Sub(a).Cross(e).LenSqr() < radius*radius*e.LenSqr()
 }

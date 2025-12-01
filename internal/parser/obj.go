@@ -23,14 +23,16 @@ func (e ObjParseError) Error() string {
 
 // Contains information about an object
 type Obj struct {
-	Vertices     []te.Vector3
-	FaceVertices [][3]int
+	Vertices []te.Vector3
+	Edges    [][2]int
+	Faces    [][3]int
 	// Don't use uv/normals (yet?)
 }
 
 // ParseObj returns an Obj from object file
 func ParseObj(path string) (Obj, error) {
 	obj := Obj{}
+	edgeSet := make(map[[2]int]bool)
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -68,8 +70,19 @@ func ParseObj(path string) (Obj, error) {
 						faces[i][j] = len(obj.Vertices) + faces[i][j] + 1
 					}
 				}
+				// Don't duplicate edges
+				for j := range len(faces[i]) - 1 {
+					for k := j + 1; k < len(faces[i]); k++ {
+						v1 := min(faces[i][j], faces[i][k])
+						v2 := max(faces[i][j], faces[i][k])
+						if !edgeSet[[2]int{v1, v2}] {
+							edgeSet[[2]int{v1, v2}] = true
+							obj.Edges = append(obj.Edges, [2]int{v1, v2})
+						}
+					}
+				}
 			}
-			obj.FaceVertices = append(obj.FaceVertices, faces...)
+			obj.Faces = append(obj.Faces, faces...)
 		default:
 			continue
 		}

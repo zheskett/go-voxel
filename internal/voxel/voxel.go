@@ -247,3 +247,17 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 
 	return rayhit
 }
+
+// Adds a voxel object to the world
+func (vox *Voxels) AddVoxelObj(vObj VoxelObj, x, y, z int) {
+	for i := range vObj.resolution {
+		for j := range vObj.resolution {
+			for k := range vObj.resolution {
+				idx := vObj.Index(k, j, i)
+				if vObj.Presence.Get(idx) && vox.Surrounds(x+k, y+j, z+i) {
+					vox.SetVoxel(x+k, y+j, z+i, vObj.Color[0], vObj.Color[1], vObj.Color[2])
+				}
+			}
+		}
+	}
+}

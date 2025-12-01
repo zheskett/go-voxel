@@ -16,9 +16,9 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("Obj: \n%v\n", obj)
-	fmt.Printf("Vert Count: %v, Face Count: %v\n", len(obj.Vertices), len(obj.FaceVertices))
+	fmt.Printf("Vert Count: %v, Face Count: %v\n", len(obj.Vertices), len(obj.Faces))
 
-	vObj, err := vxl.Voxelize(obj, vxl.T26, 64, [3]byte{255, 255, 255}, 0, 0, 0)
+	vObj, err := vxl.Voxelize(obj, vxl.T26, 64, [3]byte{255, 255, 255})
 	if err != nil {
 		panic(err)
 	}

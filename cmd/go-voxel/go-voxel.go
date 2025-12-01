@@ -30,6 +30,13 @@ func main() {
 	vox.LightIntensity = 150.0
 	fdata := ren.FrameDataInit()
 	voxelDebugScene(&vox)
+
+	vObj, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T6, 64, [3]byte{0xFF, 0xFF, 0xFF})
+	if err != nil {
+		panic(err)
+	}
+	vox.AddVoxelObj(vObj, 100, 100, 100)
+
 	fmt.Printf("total voxels: %d\n", vox.X*vox.Y*vox.Z)
 
 	for {
