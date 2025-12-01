@@ -23,19 +23,22 @@ func main() {
 	cam.Lookspeed = 2  // 2 rad/s rotation
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
+
 	cam.Pos = te.Vec3(16, 4, 16)
 	cam.RenderDistance = 256.0
 	vox := vxl.VoxelsInit(256, 256, 256)
-	vox.Light = te.Vec3(64, 32, 96)
-	vox.LightIntensity = 150.0
+	vox.Light = te.Vec3(50, 5, 30)
+	vox.LightIntensity = 30.0
 	fdata := ren.FrameDataInit()
-	voxelDebugScene(&vox)
+	voxelDebugSceneSmall(&vox)
 
-	vObj, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T6, 64, [3]byte{0xFF, 0xFF, 0xFF})
-	if err != nil {
-		panic(err)
-	}
-	vox.AddVoxelObj(vObj, 100, 100, 100)
+	// cam.Pos = te.Vec3(16, 4, 16)
+	// cam.RenderDistance = 256.0
+	// vox := vxl.VoxelsInit(256, 256, 256)
+	// vox.Light = te.Vec3(64, 32, 96)
+	// vox.LightIntensity = 70.0
+	// fdata := ren.FrameDataInit()
+	// voxelDebugSceneBig(&vox)
 
 	fmt.Printf("total voxels: %d\n", vox.X*vox.Y*vox.Z)
 
@@ -50,7 +53,40 @@ func main() {
 	}
 }
 
-func voxelDebugScene(vox *vxl.Voxels) {
+func voxelDebugSceneSmall(vox *vxl.Voxels) {
+	// Make a floor and ceiling
+	for i := 0; i < vox.X; i++ {
+		for j := 0; j < vox.Z; j++ {
+			vox.SetVoxel(i, 0, j, 220, 180, 180)
+			vox.SetVoxel(i, 30, j, 180, 180, 180)
+		}
+	}
+	// Make walls
+	for i := range 100 {
+		for j := range 100 {
+			vox.SetVoxel(100, i, j, 200, 180, 180)
+			vox.SetVoxel(0, i, j, 180, 220, 180)
+			vox.SetVoxel(j, i, 0, 200, 180, 180)
+			vox.SetVoxel(j, i, 100, 180, 180, 220)
+		}
+	}
+	// Make a small wall for shadows
+	for i := range 55 {
+		for j := range 100 {
+			vox.SetVoxel(35, j, i, 200, 180, 180)
+		}
+	}
+
+	for i := 64; i < 70; i++ {
+		for j := 16; j < 22; j++ {
+			for k := 64; k < 70; k++ {
+				vox.SetVoxel(i, j, k, 200, 200, 200)
+			}
+		}
+	}
+}
+
+func voxelDebugSceneBig(vox *vxl.Voxels) {
 	// Make a teal and purple checkerboard "ground"
 	for i := 0; i < vox.Z; i++ {
 		for j := 0; j < vox.X; j++ {

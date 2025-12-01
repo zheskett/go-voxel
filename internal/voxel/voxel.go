@@ -164,31 +164,54 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 
 	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))
 	adx, ady, adz := math32.Abs(dx), math32.Abs(dy), math32.Abs(dz)
-	invx, invy, invz := 1.0/adx, 1.0/ady, 1.0/adz
 	fractx, fracty, fractz := ox-float32(x), oy-float32(y), oz-float32(z)
 
 	var stepx, stepy, stepz int
-	timex, timey, timez := invx, invy, invz
-	if dx > 0 {
-		stepx = 1
-		timex *= 1.0 - fractx
+	var invx, invy, invz float32
+	var timex, timey, timez float32
+
+	inf := math32.Inf(1)
+	if adx < 1e-9 {
+		stepx = 0
+		invx = inf
+		timex = inf
 	} else {
-		stepx = -1
-		timex *= fractx
+		invx = 1.0 / adx
+		if dx > 0 {
+			stepx = 1
+			timex = invx * (1.0 - fractx)
+		} else {
+			stepx = -1
+			timex = invx * fractx
+		}
 	}
-	if dy > 0 {
-		stepy = 1
-		timey *= 1.0 - fracty
+	if ady < 1e-9 {
+		stepy = 0
+		invy = inf
+		timey = inf
 	} else {
-		stepy = -1
-		timey *= fracty
+		invy = 1.0 / ady
+		if dy > 0 {
+			stepy = 1
+			timey = invy * (1.0 - fracty)
+		} else {
+			stepy = -1
+			timey = invy * fracty
+		}
 	}
-	if dz > 0 {
-		stepz = 1
-		timez *= 1.0 - fractz
+	if adz < 1e-9 {
+		stepz = 0
+		invz = inf
+		timez = inf
 	} else {
-		stepz = -1
-		timez *= fractz
+		invz = 1.0 / adz
+		if dz > 0 {
+			stepz = 1
+			timez = invz * (1.0 - fractz)
+		} else {
+			stepz = -1
+			timez = invz * fractz
+		}
 	}
 
 	side := none
@@ -206,11 +229,11 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 				rayhit.Position = origin.Add(direc.Mul(time))
 				switch side {
 				case axisX:
-					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(float32(stepx))
+					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(-float32(stepx))
 				case axisY:
-					rayhit.Normal = tensor.Vec3(0, 1, 0).Mul(float32(stepy))
+					rayhit.Normal = tensor.Vec3(0, 1, 0).Mul(-float32(stepy))
 				case axisZ:
-					rayhit.Normal = tensor.Vec3(0, 0, 1).Mul(float32(stepz))
+					rayhit.Normal = tensor.Vec3(0, 0, 1).Mul(-float32(stepz))
 				default:
 					rayhit.Normal = tensor.Vec3(0, 0, 0)
 				}
