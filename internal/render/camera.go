@@ -63,7 +63,7 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 	threads := sync.WaitGroup{}
 	for row := 0; row < pix.Height; row++ {
 		threads.Go(func() {
-			// Iterate each colum of the pixel row
+			// Iterate each column of the pixel row
 			for column := 0; column < pix.Width; column++ {
 				dx, dy := float32(column)+0.5, float32(row)+0.5
 

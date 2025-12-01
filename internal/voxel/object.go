@@ -11,7 +11,8 @@ import (
 type VoxelObj struct {
 	// Position of the object in the world
 	XPos, YPos, ZPos int
-	Vox              Voxels
+	Presence         BitArray
+	Color            [3]byte
 }
 
 type ConnectivityDistance int
@@ -57,15 +58,7 @@ func Voxelize(obj parser.Obj, t ConnectivityDistance, resolution int, color [3]b
 		vertSet.bits[i] = vertSet.bits[i] | edgeSet.bits[i] | bodySet.bits[i]
 	}
 
-	vox := Voxels{resolution, resolution, resolution, vertSet, make([][3]byte, resolution*resolution*resolution)}
-	for i := 0; i < resolution*resolution*resolution; i++ {
-		if vox.Presence.Get(i) {
-			vox.Color[i] = color
-		} else {
-			vox.Color[i] = [3]byte{0, 0, 0}
-		}
-	}
-	return VoxelObj{x, y, z, vox}, nil
+	return VoxelObj{x, y, z, vertSet, color}, nil
 }
 
 func calcVertSet(obj parser.Obj, boundRad, vLen float32, resolution int) BitArray {
