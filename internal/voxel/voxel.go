@@ -51,7 +51,7 @@ type Voxels struct {
 }
 
 func VoxelsInit(x, y, z int) Voxels {
-	presence := BitArrayInit(z * y * z)
+	presence := BitArrayInit(z * y * x)
 	color := make([][3]byte, z*y*x)
 	for i := 0; i < z*y*x; i++ {
 		color[i] = [3]byte{0, 0, 0}

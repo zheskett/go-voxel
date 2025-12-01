@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/chewxy/math32"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -27,6 +28,7 @@ type Obj struct {
 	// Don't use uv/normals (yet?)
 }
 
+// ParseObj returns an Obj from object file
 func ParseObj(path string) (Obj, error) {
 	obj := Obj{}
 
@@ -38,6 +40,7 @@ func ParseObj(path string) (Obj, error) {
 
 	scanner := bufio.NewScanner(file)
 	lineNum := 1
+	absLargestVertPos := float32(0)
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
@@ -48,6 +51,8 @@ func ParseObj(path string) (Obj, error) {
 		switch line[:2] {
 		case "v ":
 			vert, err := parseVertex(line)
+			absLargestVertPos = math32.Max(absLargestVertPos, math32.Max(math32.Abs(vert.X),
+				math32.Max(math32.Abs(vert.Y), math32.Abs(vert.Z))))
 			if err != nil {
 				return obj, ObjParseError{lineNum, err}
 			}
@@ -57,12 +62,20 @@ func ParseObj(path string) (Obj, error) {
 			if err != nil {
 				return obj, ObjParseError{lineNum, err}
 			}
+			for i := range faces {
+				for j := range faces[i] {
+					if faces[i][j] < 0 {
+						faces[i][j] = len(obj.Vertices) + faces[i][j] + 1
+					}
+				}
+			}
 			obj.FaceVertices = append(obj.FaceVertices, faces...)
 		default:
 			continue
 		}
 	}
 
+	obj.scale(absLargestVertPos)
 	return obj, nil
 }
 
@@ -127,4 +140,12 @@ func parseFace(line string) ([][3]int, error) {
 	}
 
 	return faces, nil
+}
+
+// Scales the obj data so that the largest vert pos is at 1 (or -1)
+func (obj *Obj) scale(absLargestVertPos float32) {
+	scaleFactor := 1.0 / absLargestVertPos
+	for i := range obj.Vertices {
+		obj.Vertices[i] = obj.Vertices[i].Mul(scaleFactor)
+	}
 }
