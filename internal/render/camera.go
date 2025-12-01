@@ -23,9 +23,9 @@ type Camera struct {
 
 func CameraInit() Camera {
 	return Camera{
-		Fvec: te.Vector3{X: 0, Y: 0, Z: 1},
-		Rvec: te.Vector3{X: 1, Y: 0, Z: 0},
-		Uvec: te.Vector3{X: 0, Y: 1, Z: 0},
+		Fvec: te.Vec3(0, 0, 1),
+		Rvec: te.Vec3(1, 0, 0),
+		Uvec: te.Vec3(0, 1, 0),
 	}
 }
 
@@ -50,7 +50,7 @@ func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *FrameData) {
 }
 
 func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
-	scale := 1.0 / math32.Tan(cam.Fov/2.0)
+	scale := math32.Tan(cam.Fov * math32.Pi / 360.0)
 	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
 
 	// These kinds of things and some stuff in 'vox.MarchRay' can be pre-computed
@@ -60,48 +60,52 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 	dcamudy := cam.Uvec.Mul(scale)
 
 	// Iterate and spawn a thread for each row of the pixel buffer
-	var waiter sync.WaitGroup
+	threads := sync.WaitGroup{}
 	for row := 0; row < pix.Height; row++ {
-		waiter.Go(func() {
-			cam.parRenderBufferRow(pix, row, hw, hh, dcamrdx, dcamudy, vox)
+		threads.Go(func() {
+			// Iterate each colum of the pixel row
+			for column := 0; column < pix.Width; column++ {
+				dx, dy := float32(column)+0.5, float32(row)+0.5
+
+				ndcx := (dx - hw) / hw
+				ndcy := -(dy - hh) / hh
+
+				// This is effectively finding the ray that points to that specific pixel
+				dcamr := dcamrdx.Mul(ndcx)
+				dcamu := dcamudy.Mul(ndcy)
+				raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalized()
+				ray := vxl.Ray{
+					Origin: cam.Pos,
+					Dir:    raydirec,
+					Tmax:   cam.RenderDistance, // Max distance a ray can travel before terminating
+				}
+
+				rayhit := vox.MarchRay(ray)
+				if rayhit.Hit {
+					// All this lighting will be pulled into its own module
+					lightvec := rayhit.Position.Sub(vox.Light)
+					length := lightvec.Len()
+					intensity := lightvec.Div(length).Dot(rayhit.Normal) * vox.LightIntensity / length
+					if intensity < 0.025 {
+						intensity = 0.025 // Limit dimness to 2.5 %
+					}
+					color := rayhit.Color
+					floatcolor := te.Vec3(float32(color[0]), float32(color[1]), float32(color[2])).Mul(intensity)
+					if floatcolor.X > 255 {
+						floatcolor.X = 255
+					}
+					if floatcolor.Y > 255 {
+						floatcolor.Y = 255
+					}
+					if floatcolor.Z > 255 {
+						floatcolor.Z = 255
+					}
+					pix.SetPixel(column, row, byte(floatcolor.X), byte(floatcolor.Y), byte(floatcolor.Z))
+				}
+			}
 		})
 	}
-	waiter.Wait()
-}
-
-func (cam *Camera) parRenderBufferRow(pix *Pixels, row int, hw float32, hh float32, dcamrdx te.Vector3, dcamudy te.Vector3, vox *vxl.Voxels) {
-	// This takes a lot of inputs and could be more bundled up once we find everything required
-
-	// Iterate each column of the pixel row and cast a ray
-	for column := 0; column < pix.Width; column++ {
-		dx, dy := float32(column)+0.5, float32(row)+0.5
-
-		ndcx := (dx - hw) / hw
-		ndcy := -(dy - hh) / hh
-
-		// This is effectively finding the ray that points to that specific pixel
-		dcamr := dcamrdx.Mul(ndcx)
-		dcamu := dcamudy.Mul(ndcy)
-		raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalized()
-		ray := vxl.Ray{
-			Origin: cam.Pos,
-			Dir:    raydirec,
-			Tmax:   cam.RenderDistance, // Max distance a ray can travel before terminating
-		}
-
-		// TODO:
-		lightdir := te.Vec3(1, -3, 7).Normalized() // Just set this randomly to see if normals work
-		rayhit := vox.MarchRay(ray)
-		if rayhit.Hit {
-			color := rayhit.Color
-			intensity := lightdir.Dot(rayhit.Normal)
-			if intensity < 0.1 {
-				intensity = 0.1 // Limit dimness to 10%
-			}
-			floatcolor := te.Vec3(float32(color[0]), float32(color[1]), float32(color[2])).Mul(intensity)
-			pix.SetPixel(column, row, byte(floatcolor.X), byte(floatcolor.Y), byte(floatcolor.Z))
-		}
-	}
+	threads.Wait()
 }
 
 func UpdateCamInputGLFW(cam *Camera, window *glfw.Window, frame *FrameData) {
