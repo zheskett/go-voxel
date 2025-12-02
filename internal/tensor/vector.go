@@ -58,6 +58,14 @@ func (v Vector2) Normalized() Vector2 {
 	return Vector2{v.X * invLen, v.Y * invLen}
 }
 
+func (v Vector2) NormalizedOrZero() Vector2 {
+	invLen := 1.0 / v.Len()
+	if math32.IsInf(invLen, 1) {
+		return Vec2Zero()
+	}
+	return Vector2{v.X * invLen, v.Y * invLen}
+}
+
 func (v Vector2) Neg() Vector2 {
 	return Vector2{-v.X, -v.Y}
 }
@@ -157,6 +165,14 @@ func (v Vector3) LenSqr() float32 {
 // Returns the normalized vector
 func (v Vector3) Normalized() Vector3 {
 	invLen := 1.0 / v.Len()
+	return Vector3{v.X * invLen, v.Y * invLen, v.Z * invLen}
+}
+
+func (v Vector3) NormalizedOrZero() Vector3 {
+	invLen := 1.0 / v.Len()
+	if math32.IsInf(invLen, 1) {
+		return Vec3Zero()
+	}
 	return Vector3{v.X * invLen, v.Y * invLen, v.Z * invLen}
 }
 

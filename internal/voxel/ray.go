@@ -24,4 +24,5 @@ type RayHit struct {
 	Color    [3]byte
 	Normal   te.Vector3
 	Position te.Vector3
+	IntPos   [3]int
 }

@@ -12,9 +12,9 @@ import (
 
 // Window info
 const (
-	TextureWidth  = 320
-	TextureHeight = 240
-	WindowUpscale = 5
+	TextureWidth  = 400
+	TextureHeight = 300
+	WindowUpscale = 4
 	WindowTitle   = "Go Voxel"
 )
 
@@ -35,6 +35,8 @@ type FrameData struct {
 	Deltat   float32
 	Previous time.Time
 	Tick     uint
+	mx       float32
+	my       float32
 }
 
 func FrameDataInit() FrameData {
@@ -49,6 +51,16 @@ func (data *FrameData) Update() {
 
 func (data *FrameData) ReportFps() {
 	fmt.Printf("FPS: %.2f\n", 1.0/data.Deltat)
+}
+
+func (data *FrameData) GetMouseDelta(window *glfw.Window) (float32, float32) {
+	mx_f64, my_f64 := window.GetCursorPos()
+	mx, my := float32(mx_f64), float32(my_f64)
+	dx, dy := data.mx-mx, data.my-my
+	data.mx = mx
+	data.my = my
+
+	return dx, dy
 }
 
 // Pixles contains the data for each pixel on the screen.
@@ -134,6 +146,7 @@ func RenderManagerInit() (*RenderManager, *glfw.Window) {
 		panic(err)
 	}
 	window.MakeContextCurrent()
+	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 
 	// Initialize gl
 	err = gl.Init()

@@ -84,6 +84,13 @@ func calcEdgeSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resoluti
 		_ = v2.Sub(v1).Normalized().Mul(vLen)
 
 	}
+
+	ErrorSilent(set)
+	ErrorSilent(obj)
+	ErrorSilent(boundRad)
+	ErrorSilent(vLen)
+	ErrorSilent(resolution)
+	ErrorSilent(insideCylinder)
 }
 
 func bitIdx(x, y, z, resolution int) int {

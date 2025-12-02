@@ -19,7 +19,8 @@ type Engine struct {
 func (eng *Engine) UpdateInputs() {
 	eng.Framedata.Update()
 	eng.Framedata.ReportFps()
-	render.UpdateCamInputGLFW(&eng.Camera, eng.Window, &eng.Framedata)
+	// render.UpdateCamInputGLFW(&eng.Camera, eng.Window, &eng.Framedata)
+	render.UpdateCamInputGLFWFPS(&eng.Camera, eng.Window, &eng.Framedata)
 }
 
 func (eng *Engine) UpdateRender() {
