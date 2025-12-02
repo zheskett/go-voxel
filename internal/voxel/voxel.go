@@ -2,6 +2,7 @@ package voxel
 
 import (
 	"github.com/chewxy/math32"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -40,62 +41,25 @@ func (bits *BitArray) Reset(index int) {
 	bucket := index / 64
 	shift := index % 64
 	mask := uint64(1) << shift
-	bits.bits[bucket] ^= ^mask
+	bits.bits[bucket] ^= mask
 }
 
-type AABB struct {
-	low  [3]int
-	high [3]int
-}
-
-func AABBInit(lx, ly, lz int, hx, hy, hz int) AABB {
-	return AABB{low: [3]int{lx, ly, lz}, high: [3]int{hx, hy, hz}}
-}
-
-func (bb *AABB) Subdivide() [8]AABB {
-	lx, ly, lz := bb.low[0], bb.low[1], bb.low[2]
-	hx, hy, hz := bb.high[0], bb.high[1], bb.high[2]
-	mx, my, mz := lx+bb.high[0]-bb.low[0]/2, ly+bb.high[1]-bb.low[1]/2, lz+bb.high[2]-bb.low[2]/2
-
-	return [8]AABB{
-		AABBInit(lx, ly, lz, mx, my, mz),
-		AABBInit(mx, ly, lz, hx, my, mz),
-		AABBInit(lx, my, lz, mx, hy, mz),
-		AABBInit(lx, ly, mz, mx, my, hz),
-		AABBInit(mx, my, mz, hx, hy, hz),
-		AABBInit(mx, my, lz, hx, hy, mz),
-		AABBInit(lx, my, mz, mx, hy, hz),
-		AABBInit(mx, ly, mz, hx, my, hz),
+func (bits *BitArray) Clear() {
+	for i := range bits.bits {
+		bits.bits[i] = 0
 	}
 }
 
-type TreeNode struct {
-	bb     AABB
-	leaves [8]*TreeNode
+// Just a point light
+type Light struct {
+	Position tensor.Vector3
+	Color    tensor.Vector3 // Can have mag > 1 for a bright light
 }
 
-func TreeNodeInit(bounds AABB) *TreeNode {
-	return &TreeNode{bb: bounds}
-}
-
-func (node *TreeNode) IsStem() bool {
-	return node.leaves[0] == nil
-}
-
-func (node *TreeNode) IsLeaf() bool {
-	return node.leaves[0] != nil
-}
-
-type Octree struct {
-	head *TreeNode
-}
-
-func OctreeInit(bounds AABB) Octree {
-	return Octree{head: TreeNodeInit(bounds)}
-}
-
-func (tree *Octree) Insert(voxel [3]int) {
-
+// Lighting info for a single voxel
+type CachedLighting struct {
+	Light tensor.Vector3 // The cumulative lighting it gets
+	Dir   tensor.Vector3 // The weighted direction of all lights in the scene w.r.t. that voxel
 }
 
 // Naive storage as an array
@@ -103,25 +67,26 @@ type Voxels struct {
 	Z, Y, X  int
 	Presence BitArray
 	Color    [][3]byte
-	// As of now, only support a single point-light
-	Light          tensor.Vector3
-	LightIntensity float32 // This isn't a good way of doing this it's just for proof of concept
+
+	// Actually, this would be really easy to bake lighting as long as we aren't moving the lights at runtime
+	// Doing realtime lighting just seems more interesting tho
+	LightCached BitArray // Whether or not we already having lighting data for that frame
+	// There are terrible race conditions happening in this that causes really bad flickering
+	Lighting []CachedLighting
+
+	Lights []Light // Shouldn't be in here probably, maybe in another larger structure holding all worlds stuff
 }
 
 func VoxelsInit(x, y, z int) Voxels {
-	vox := Voxels{}
 	presence := BitArrayInit(z * y * x)
 	color := make([][3]byte, z*y*x)
+	lighting := make([]CachedLighting, z*y*x)
+	lightcache := BitArrayInit(z * y * x)
+	lights := make([]Light, 0)
 	for i := 0; i < z*y*x; i++ {
 		color[i] = [3]byte{0, 0, 0}
 	}
-	vox.Z = z
-	vox.Y = y
-	vox.X = x
-	vox.Presence = presence
-	vox.Color = color
-	return vox
-	// return Voxels{z, y, x, presence, color}
+	return Voxels{z, y, x, presence, color, lightcache, lighting, lights}
 }
 
 func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
@@ -130,7 +95,7 @@ func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
 	vox.Color[idx] = [3]byte{r, g, b}
 }
 
-func (vox *Voxels) ResetVoxel(x, y, z int, r, g, b byte) {
+func (vox *Voxels) ResetVoxel(x, y, z int) {
 	idx := vox.Index(x, y, z)
 	vox.Presence.Reset(idx)
 	vox.Color[idx] = [3]byte{0, 0, 0}
@@ -225,8 +190,9 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 			if vox.Presence.Get(idx) {
 				rayhit.Hit = true
 				rayhit.Time = time
+				rayhit.IntPos = [3]int{x, y, z}
+				rayhit.Position = ray.Origin.Add(ray.Dir.Mul(time))
 				rayhit.Color = vox.Color[idx]
-				rayhit.Position = origin.Add(direc.Mul(time))
 				switch side {
 				case axisX:
 					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(-float32(stepx))
@@ -282,5 +248,23 @@ func (vox *Voxels) AddVoxelObj(vObj VoxelObj, x, y, z int) {
 				}
 			}
 		}
+	}
+}
+
+// This is super temporary and just a proof of concept
+func (vox *Voxels) UpdateInputs(window *glfw.Window, pos tensor.Vector3, dir tensor.Vector3) {
+	ray := Ray{Origin: pos, Dir: dir, Tmax: 100.0}
+	hit := vox.MarchRay(ray)
+	if !hit.Hit {
+		return
+	}
+	if window.GetMouseButton(glfw.MouseButtonLeft) == glfw.Press {
+		x, y, z := hit.IntPos[0], hit.IntPos[1], hit.IntPos[2]
+		vox.ResetVoxel(x, y, z)
+	}
+	if window.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
+		voxel := hit.Position.Add(hit.Normal.Mul(VoxelRayDelta))
+		x, y, z := int(voxel.X), int(voxel.Y), int(voxel.Z)
+		vox.SetVoxel(x, y, z, 255, 255, 255)
 	}
 }

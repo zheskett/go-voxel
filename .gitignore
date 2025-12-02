@@ -36,3 +36,6 @@ go.work.sum
 
 # MacOS
 .DS_Store
+
+# Build and run on Windows without Make
+build_run.bat
