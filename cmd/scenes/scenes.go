@@ -8,20 +8,22 @@ import (
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
+// A small room with 3 colored lights and boxes everywhere
 func VoxelDebugSceneSmall(vox *vxl.Voxels) {
+	brightness := 22
 	light := vxl.Light{
 		Position: te.Vec3(50, 15, 30),
-		Color:    te.Vec3(0.5, 0.5, 1.0),
+		Color:    te.Vec3(0.5, 0.5, 1.0).Mul(float32(brightness)),
 	}
 	vox.Lights = append(vox.Lights, light)
 	light = vxl.Light{
 		Position: te.Vec3(20, 7, 22),
-		Color:    te.Vec3(1.0, 0.5, 0.5),
+		Color:    te.Vec3(1.0, 0.5, 0.5).Mul(float32(brightness)),
 	}
 	vox.Lights = append(vox.Lights, light)
 	light = vxl.Light{
 		Position: te.Vec3(88, 30, 88),
-		Color:    te.Vec3(0.5, 1.0, 0.5),
+		Color:    te.Vec3(0.5, 1.0, 0.5).Mul(float32(brightness)),
 	}
 	vox.Lights = append(vox.Lights, light)
 
@@ -48,9 +50,9 @@ func VoxelDebugSceneSmall(vox *vxl.Voxels) {
 		}
 	}
 
-	for i := 64; i < 70; i++ {
-		for j := 32; j < 40; j++ {
-			for k := 64; k < 70; k++ {
+	for i := 60; i < 70; i++ {
+		for j := 28; j < 40; j++ {
+			for k := 60; k < 70; k++ {
 				vox.SetVoxel(i, j, k, 200, 200, 200)
 			}
 		}
@@ -67,10 +69,12 @@ func VoxelDebugSceneSmall(vox *vxl.Voxels) {
 	}
 }
 
+// A massive open scene with a bunch of random stuff
 func VoxelDebugSceneBig(vox *vxl.Voxels) {
+	brightness := 120
 	light := vxl.Light{
 		Position: te.Vec3(64, 32, 96),
-		Color:    te.Vec3(1.0, 1.0, 1.0),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
 	vox.Lights = append(vox.Lights, light)
 	// Make a teal and purple checkerboard "ground"

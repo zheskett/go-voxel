@@ -9,7 +9,7 @@ const (
 	// the shared face of two neighbor voxels. This distance offset is used in:
 	// vox = hit_position - hit_normal * VoxelRayDelta
 	// to find the actual voxel the ray hit
-	VoxelRayDelta = 0.25
+	VoxelRayDelta = 0.05
 )
 
 type Ray struct {
@@ -22,7 +22,7 @@ type RayHit struct {
 	Hit      bool
 	Time     float32
 	Color    [3]byte
-	Normal   te.Vector3
-	Position te.Vector3
 	IntPos   [3]int
+	Position te.Vector3
+	Normal   te.Vector3
 }

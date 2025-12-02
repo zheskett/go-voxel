@@ -12,7 +12,7 @@ func AABBInit(lx, ly, lz int, hx, hy, hz int) AABB {
 func (bb *AABB) Subdivide() [8]AABB {
 	lx, ly, lz := bb.low[0], bb.low[1], bb.low[2]
 	hx, hy, hz := bb.high[0], bb.high[1], bb.high[2]
-	mx, my, mz := lx+bb.high[0]-bb.low[0]/2, ly+bb.high[1]-bb.low[1]/2, lz+bb.high[2]-bb.low[2]/2
+	mx, my, mz := lx+(bb.high[0]-bb.low[0])/2, ly+(bb.high[1]-bb.low[1])/2, lz+(bb.high[2]-bb.low[2])/2
 
 	return [8]AABB{
 		AABBInit(lx, ly, lz, mx, my, mz),
@@ -44,17 +44,19 @@ func (node *TreeNode) IsLeaf() bool {
 }
 
 type Octree struct {
-	head *TreeNode
+	root *TreeNode
 }
 
 func OctreeInit(bounds AABB) Octree {
-	return Octree{head: TreeNodeInit(bounds)}
+	return Octree{root: TreeNodeInit(bounds)}
 }
 
 func (tree *Octree) Insert(voxel [3]int) {
+	// TODO:
 	ErrorSilent(tree)
 }
 
+// Just used to silence the gopls errors
 func ErrorSilent[T any](v T, a ...T) {
 
 }

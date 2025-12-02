@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
 // Window info
@@ -25,18 +26,12 @@ const (
 	BackgroundBlue  = 40
 )
 
-// Number of threads the camera will dispatch
-const (
-	RenderThreads = 16
-)
-
 // FrameData allows camera movements to be made independent of FPS for a smoother movements
 type FrameData struct {
-	Deltat   float32
 	Previous time.Time
+	Deltat   float32
 	Tick     uint
-	mx       float32
-	my       float32
+	mouse    tensor.Vector2
 }
 
 func FrameDataInit() FrameData {
@@ -56,15 +51,14 @@ func (data *FrameData) ReportFps() {
 func (data *FrameData) GetMouseDelta(window *glfw.Window) (float32, float32) {
 	mx_f64, my_f64 := window.GetCursorPos()
 	mx, my := float32(mx_f64), float32(my_f64)
-	dx, dy := data.mx-mx, data.my-my
-	data.mx = mx
-	data.my = my
+	dx, dy := data.mouse.X-mx, data.mouse.Y-my
+	data.mouse = tensor.Vec2(mx, my)
 
 	return dx, dy
 }
 
-// Pixles contains the data for each pixel on the screen.
-// Every pixel if 4 bytes, RGBA
+// Pixels contains the data for each pixel on the screen.
+// Every pixel is 4 bytes, RGBA
 type Pixels struct {
 	data   []byte
 	Height int

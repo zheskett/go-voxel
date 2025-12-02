@@ -21,6 +21,7 @@ func (eng *Engine) UpdateInputs() {
 	eng.Framedata.ReportFps()
 	// render.UpdateCamInputGLFW(&eng.Camera, eng.Window, &eng.Framedata)
 	render.UpdateCamInputGLFWFPS(&eng.Camera, eng.Window, &eng.Framedata)
+	eng.Voxels.UpdateInputs(eng.Window, eng.Camera.Pos, eng.Camera.Fvec)
 }
 
 func (eng *Engine) UpdateRender() {

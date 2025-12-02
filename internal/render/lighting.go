@@ -26,12 +26,10 @@ func GetPixelShading(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) te.Vector3 {
 		// If we don't hit anything, the pixel has direct view of the light, as the rayline
 		// has no obstruction
 		if !shadowcast.Hit {
-			brightness := math32.Max(0.0, hit.Normal.Dot(lightdir))
+			brightness := math32.Max(0.0, hit.Normal.Dot(lightdir)) / lightdist
 			intensity = intensity.Add(light.Color.Mul(brightness))
 		}
 	}
-	// Normalize by the number of lights
-	intensity = intensity.Div(float32(len(vox.Lights)))
 
 	return intensity
 }
@@ -59,7 +57,12 @@ func shadeVoxel(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) vxl.CachedLightin
 	intensity := te.Vec3Zero()
 	direction := te.Vec3Zero()
 	x, y, z := float32(hit.IntPos[0]), float32(hit.IntPos[1]), float32(hit.IntPos[2])
-	voxelcenter := te.Vec3(x+0.5, y+0.5, z+0.5)
+	// The flickering is coming from this. The race condition technically shouldn't
+	// matter (because the lights don't move), but what is happening is depdending on
+	// how the camera is oriented a different face of the voxel is being struck first,
+	// leading to a different exposure angle to the lights and it gets biased towards
+	// one color.
+	voxelcenter := te.Vec3(x+0.5, y+0.5, z+0.5).Add(hit.Normal.Mul(0.5))
 	for _, light := range vox.Lights {
 		lightpos := light.Position.Sub(voxelcenter)
 		lightdist := lightpos.Len()
@@ -76,11 +79,10 @@ func shadeVoxel(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) vxl.CachedLightin
 		// If we don't hit anything, the pixel has direct view of the light, as the rayline
 		// has no obstruction
 		if !shadowcast.Hit {
-			intensity = intensity.Add(light.Color)
-			direction = direction.Add(lightdir)
+			intensity = intensity.Add(light.Color.Div(lightdist))
+			direction = direction.Add(lightpos)
 		}
 	}
-	intensity = intensity.Div(float32(len(vox.Lights)))
 	direction = direction.Normalized()
 
 	return vxl.CachedLighting{Light: intensity, Dir: direction}

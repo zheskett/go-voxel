@@ -117,6 +117,7 @@ func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ra
 
 func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 	basis := CameraRayBasisInit(cam, pix)
+	// Shouldn't be here, but tbh light info shouldn't be in the Voxel struct at all probably
 	vox.LightCached.Clear()
 
 	// Iterate and spawn a thread for each row of the pixel buffer
@@ -131,8 +132,11 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 				if hit.Hit {
 					color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
-					// shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
-					shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
+					/* Two choices for lighting, doing it per pixel or per voxel. The per-voxel one has
+					this terrible flickering due to some race conditions that I don't know how to
+					fix, tho... */
+					shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
+					// shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
 
 					shadedcolor := shadedintensity.MulComponent(color).ComponentMin(255.0)
 					pix.SetPixel(column, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
@@ -206,6 +210,9 @@ func UpdateCamInputGLFWFPS(cam *Camera, window *glfw.Window, frame *FrameData) {
 	}
 	if window.GetKey(glfw.KeyLeftShift) == glfw.Press {
 		ty++
+	}
+	if window.GetKey(glfw.KeyT) == glfw.Press {
+		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	}
 	dx, dy := frame.GetMouseDelta(window)
 	cam.UpdateRotationFPS(dy, dx)

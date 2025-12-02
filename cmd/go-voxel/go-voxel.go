@@ -20,7 +20,7 @@ func init() {
 func main() {
 	vox := vxl.VoxelsInit(256, 256, 256)
 	var scene int
-	fmt.Printf("enter 1 for the big scene or anything else for the small one")
+	fmt.Printf("enter 1 for the big scene and anything else for the small room with lots of lights\n")
 	fmt.Scanln(&scene)
 	switch scene {
 	case 1:

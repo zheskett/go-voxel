@@ -2,6 +2,7 @@ package voxel
 
 import (
 	"github.com/chewxy/math32"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -40,7 +41,7 @@ func (bits *BitArray) Reset(index int) {
 	bucket := index / 64
 	shift := index % 64
 	mask := uint64(1) << shift
-	bits.bits[bucket] ^= ^mask
+	bits.bits[bucket] ^= mask
 }
 
 func (bits *BitArray) Clear() {
@@ -49,14 +50,16 @@ func (bits *BitArray) Clear() {
 	}
 }
 
+// Just a point light
 type Light struct {
 	Position tensor.Vector3
-	Color    tensor.Vector3
+	Color    tensor.Vector3 // Can have mag > 1 for a bright light
 }
 
+// Lighting info for a single voxel
 type CachedLighting struct {
-	Light tensor.Vector3
-	Dir   tensor.Vector3
+	Light tensor.Vector3 // The cumulative lighting it gets
+	Dir   tensor.Vector3 // The weighted direction of all lights in the scene w.r.t. that voxel
 }
 
 // Naive storage as an array
@@ -67,8 +70,9 @@ type Voxels struct {
 
 	// Actually, this would be really easy to bake lighting as long as we aren't moving the lights at runtime
 	// Doing realtime lighting just seems more interesting tho
-	LightCached BitArray
-	Lighting    []CachedLighting
+	LightCached BitArray // Whether or not we already having lighting data for that frame
+	// There are terrible race conditions happening in this that causes really bad flickering
+	Lighting []CachedLighting
 
 	Lights []Light // Shouldn't be in here probably, maybe in another larger structure holding all worlds stuff
 }
@@ -91,7 +95,7 @@ func (vox *Voxels) SetVoxel(x, y, z int, r, g, b byte) {
 	vox.Color[idx] = [3]byte{r, g, b}
 }
 
-func (vox *Voxels) ResetVoxel(x, y, z int, r, g, b byte) {
+func (vox *Voxels) ResetVoxel(x, y, z int) {
 	idx := vox.Index(x, y, z)
 	vox.Presence.Reset(idx)
 	vox.Color[idx] = [3]byte{0, 0, 0}
@@ -186,9 +190,9 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 			if vox.Presence.Get(idx) {
 				rayhit.Hit = true
 				rayhit.Time = time
-				rayhit.Color = vox.Color[idx]
-				rayhit.Position = ray.Origin.Add(ray.Dir.Mul(time))
 				rayhit.IntPos = [3]int{x, y, z}
+				rayhit.Position = ray.Origin.Add(ray.Dir.Mul(time))
+				rayhit.Color = vox.Color[idx]
 				switch side {
 				case axisX:
 					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(-float32(stepx))
@@ -244,5 +248,23 @@ func (vox *Voxels) AddVoxelObj(vObj VoxelObj, x, y, z int) {
 				}
 			}
 		}
+	}
+}
+
+// This is super temporary and just a proof of concept
+func (vox *Voxels) UpdateInputs(window *glfw.Window, pos tensor.Vector3, dir tensor.Vector3) {
+	ray := Ray{Origin: pos, Dir: dir, Tmax: 100.0}
+	hit := vox.MarchRay(ray)
+	if !hit.Hit {
+		return
+	}
+	if window.GetMouseButton(glfw.MouseButtonLeft) == glfw.Press {
+		x, y, z := hit.IntPos[0], hit.IntPos[1], hit.IntPos[2]
+		vox.ResetVoxel(x, y, z)
+	}
+	if window.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
+		voxel := hit.Position.Add(hit.Normal.Mul(VoxelRayDelta))
+		x, y, z := int(voxel.X), int(voxel.Y), int(voxel.Z)
+		vox.SetVoxel(x, y, z, 255, 255, 255)
 	}
 }
