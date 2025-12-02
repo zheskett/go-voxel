@@ -98,14 +98,20 @@ func (tree *Octree) Insert(voxel [3]int) {
 
 }
 
+type Light struct {
+	Position tensor.Vector3
+	Color    tensor.Vector3
+}
+
 // Naive storage as an array
 type Voxels struct {
 	Z, Y, X  int
 	Presence BitArray
 	Color    [][3]byte
 	// As of now, only support a single point-light
-	Light          tensor.Vector3
-	LightIntensity float32 // This isn't a good way of doing this it's just for proof of concept
+	// Light          tensor.Vector3
+	// LightIntensity float32 // This isn't a good way of doing this it's just for proof of concept
+	Lights []Light
 }
 
 func VoxelsInit(x, y, z int) Voxels {
@@ -226,7 +232,7 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 				rayhit.Hit = true
 				rayhit.Time = time
 				rayhit.Color = vox.Color[idx]
-				rayhit.Position = origin.Add(direc.Mul(time))
+				rayhit.Position = ray.Origin.Add(ray.Dir.Mul(time))
 				switch side {
 				case axisX:
 					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(-float32(stepx))

@@ -9,6 +9,22 @@ import (
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
+type CameraRayBasis struct {
+	drdx       te.Vector3
+	dudy       te.Vector3
+	halfwidth  float32
+	halfheight float32
+}
+
+func CameraRayBasisInit(cam *Camera, pix *Pixels) CameraRayBasis {
+	scale := math32.Tan(cam.Fov * math32.Pi / 360.0)
+	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
+
+	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
+	dcamudy := cam.Uvec.Mul(scale)
+	return CameraRayBasis{dcamrdx, dcamudy, hw, hh}
+}
+
 type Camera struct {
 	Fvec           te.Vector3
 	Rvec           te.Vector3
@@ -49,15 +65,25 @@ func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *FrameData) {
 	cam.Pos = cam.Pos.Add(forward).Add(vertical).Add(lateral)
 }
 
-func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
-	scale := math32.Tan(cam.Fov * math32.Pi / 360.0)
-	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
+func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ray {
+	dx, dy := float32(column)+0.5, float32(row)+0.5
 
-	// These kinds of things and some stuff in 'vox.MarchRay' can be pre-computed
-	// instead of doing it again every time for every pixel
-	// Need to find a nice way to package all that
-	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
-	dcamudy := cam.Uvec.Mul(scale)
+	ndcx := (dx - basis.halfwidth) / basis.halfwidth
+	ndcy := -(dy - basis.halfheight) / basis.halfheight
+
+	// This is effectively finding the ray that points to that specific pixel
+	dcamr := basis.drdx.Mul(ndcx)
+	dcamu := basis.dudy.Mul(ndcy)
+	raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalized()
+	return vxl.Ray{
+		Origin: cam.Pos,
+		Dir:    raydirec,
+		Tmax:   cam.RenderDistance, // Max distance a ray can travel before terminating
+	}
+}
+
+func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
+	basis := CameraRayBasisInit(cam, pix)
 
 	// Iterate and spawn a thread for each row of the pixel buffer
 	threads := sync.WaitGroup{}
@@ -65,65 +91,14 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 		threads.Go(func() {
 			// Iterate each column of the pixel row
 			for column := 0; column < pix.Width; column++ {
-				dx, dy := float32(column)+0.5, float32(row)+0.5
+				ray := cam.getPixelRay(column, row, basis)
 
-				ndcx := (dx - hw) / hw
-				ndcy := -(dy - hh) / hh
-
-				// This is effectively finding the ray that points to that specific pixel
-				dcamr := dcamrdx.Mul(ndcx)
-				dcamu := dcamudy.Mul(ndcy)
-				raydirec := (cam.Fvec.Add(dcamr).Add(dcamu)).Normalized()
-				ray := vxl.Ray{
-					Origin: cam.Pos,
-					Dir:    raydirec,
-					Tmax:   cam.RenderDistance, // Max distance a ray can travel before terminating
-				}
-
-				rayhit := vox.MarchRay(ray)
-				if rayhit.Hit {
-					intensity := float32(1.0)
-					color := rayhit.Color
-
-					lightvec := vox.Light.Sub(rayhit.Position)
-					lightdist := lightvec.Len()
-					lightdir := lightvec.Normalized()
-
-					if lightdist < 1e-6 || lightdist > 1e6 {
-						panic("extreme value")
-					}
-
-					shadowrayorigin := rayhit.Position.Add(lightdir.Mul(0.01))
-					shadowray := vxl.Ray{
-						Origin: shadowrayorigin,
-						Dir:    lightdir,
-						Tmax:   lightdist,
-					}
-					shadowhit := vox.MarchRay(shadowray)
-
-					inlight := !shadowhit.Hit
-
-					if inlight {
-						intensity = rayhit.Normal.Dot(lightdir) * vox.LightIntensity / lightdist
-					} else {
-						intensity = 0.025
-					}
-
-					if intensity < 0.1 {
-						intensity = 0.1
-					}
-
-					floatcolor := te.Vec3(float32(color[0]), float32(color[1]), float32(color[2])).Mul(intensity)
-					if floatcolor.X > 255 {
-						floatcolor.X = 255
-					}
-					if floatcolor.Y > 255 {
-						floatcolor.Y = 255
-					}
-					if floatcolor.Z > 255 {
-						floatcolor.Z = 255
-					}
-					pix.SetPixel(column, row, byte(floatcolor.X), byte(floatcolor.Y), byte(floatcolor.Z))
+				hit := vox.MarchRay(ray)
+				if hit.Hit {
+					color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
+					shadedintensity := ShadePixel(vox, hit)
+					shadedcolor := shadedintensity.MulComponent(color).ComponentMin(255.0)
+					pix.SetPixel(column, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
 				}
 			}
 		})

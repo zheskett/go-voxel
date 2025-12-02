@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"runtime"
 
+	"github.com/zheskett/go-voxel/internal/engine"
 	ren "github.com/zheskett/go-voxel/internal/render"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
@@ -17,7 +18,8 @@ func init() {
 }
 
 func main() {
-	rm := ren.RenderManagerInit()
+
+	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()
 	cam.Movespeed = 15 // 15 voxels/s second walking
 	cam.Lookspeed = 2  // 2 rad/s rotation
@@ -27,29 +29,48 @@ func main() {
 	cam.Pos = te.Vec3(16, 4, 16)
 	cam.RenderDistance = 256.0
 	vox := vxl.VoxelsInit(256, 256, 256)
-	vox.Light = te.Vec3(50, 5, 30)
-	vox.LightIntensity = 30.0
+	light := vxl.Light{
+		Position: te.Vec3(50, 15, 30),
+		Color:    te.Vec3(0.5, 0.5, 1.0),
+	}
+	vox.Lights = append(vox.Lights, light)
+	light = vxl.Light{
+		Position: te.Vec3(20, 7, 22),
+		Color:    te.Vec3(1.0, 0.5, 0.5),
+	}
+	vox.Lights = append(vox.Lights, light)
+	light = vxl.Light{
+		Position: te.Vec3(88, 30, 88),
+		Color:    te.Vec3(0.5, 1.0, 0.5),
+	}
+	vox.Lights = append(vox.Lights, light)
 	fdata := ren.FrameDataInit()
 	voxelDebugSceneSmall(&vox)
 
 	// cam.Pos = te.Vec3(16, 4, 16)
 	// cam.RenderDistance = 256.0
 	// vox := vxl.VoxelsInit(256, 256, 256)
-	// vox.Light = te.Vec3(64, 32, 96)
-	// vox.LightIntensity = 70.0
+	// light := vxl.Light{
+	// 	Position: te.Vec3(64, 32, 96),
+	// 	Color:    te.Vec3(1.0, 1.0, 1.0),
+	// }
+	// vox.Lights = append(vox.Lights, light)
 	// fdata := ren.FrameDataInit()
 	// voxelDebugSceneBig(&vox)
+
+	engine := engine.Engine{}
+	engine.Renderer = rm
+	engine.Window = window
+	engine.Camera = cam
+	engine.Voxels = vox
+	engine.Framedata = fdata
 
 	fmt.Printf("total voxels: %d\n", vox.X*vox.Y*vox.Z)
 
 	for {
-		rm.Pixels.FillPixels(15, 25, 40)
-		cam.RenderVoxels(&vox, &rm.Pixels)
-		ren.UpdateCamInputGLFW(&cam, rm.Window, &fdata)
-		fdata.Update()
-		fdata.ReportFps()
-		rm.Render()
-		rm.CheckExit()
+		engine.UpdateInputs()
+		engine.UpdateRender()
+		engine.CheckExit()
 	}
 }
 
@@ -58,7 +79,7 @@ func voxelDebugSceneSmall(vox *vxl.Voxels) {
 	for i := 0; i < vox.X; i++ {
 		for j := 0; j < vox.Z; j++ {
 			vox.SetVoxel(i, 0, j, 220, 180, 180)
-			vox.SetVoxel(i, 30, j, 180, 180, 180)
+			vox.SetVoxel(i, 40, j, 180, 180, 180)
 		}
 	}
 	// Make walls
@@ -81,6 +102,16 @@ func voxelDebugSceneSmall(vox *vxl.Voxels) {
 		for j := 16; j < 22; j++ {
 			for k := 64; k < 70; k++ {
 				vox.SetVoxel(i, j, k, 200, 200, 200)
+			}
+		}
+	}
+
+	for i := range 100 {
+		for j := range 100 {
+			for k := range 100 {
+				if i%10 == 0 && j%10 == 0 && k%10 == 0 {
+					vox.SetVoxel(i, j, k, 200, 200, 200)
+				}
 			}
 		}
 	}

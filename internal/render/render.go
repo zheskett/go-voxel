@@ -3,7 +3,6 @@ package render
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"time"
 
@@ -11,17 +10,31 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
+// Window info
 const (
 	TextureWidth  = 320
 	TextureHeight = 240
-	WindowUpscale = 3
+	WindowUpscale = 5
 	WindowTitle   = "Go Voxel"
+)
+
+// Window clear color
+const (
+	BackgroundRed   = 15
+	BackgroundGreen = 25
+	BackgroundBlue  = 40
+)
+
+// Number of threads the camera will dispatch
+const (
+	RenderThreads = 16
 )
 
 // FrameData allows camera movements to be made independent of FPS for a smoother movements
 type FrameData struct {
 	Deltat   float32
 	Previous time.Time
+	Tick     uint
 }
 
 func FrameDataInit() FrameData {
@@ -31,6 +44,7 @@ func FrameDataInit() FrameData {
 func (data *FrameData) Update() {
 	data.Deltat = float32(time.Since(data.Previous).Seconds())
 	data.Previous = time.Now()
+	data.Tick += 1
 }
 
 func (data *FrameData) ReportFps() {
@@ -84,45 +98,48 @@ type RenderManager struct {
 	renderTexture uint32
 	fbo           uint32
 	Pixels        Pixels
-	Window        *glfw.Window
 }
 
 // RenderManagerInit initializes the render manager
 // and initializes the opengl context
-func RenderManagerInit() *RenderManager {
+func RenderManagerInit() (*RenderManager, *glfw.Window) {
+	rm := RenderManager{}
+
 	// Initialize glfw
 	err := glfw.Init()
 	if err != nil {
 		panic(err)
 	}
 
-	// Initialize gl
-	err = gl.Init()
-	if err != nil {
-		panic(err)
-	}
-
-	rm := RenderManager{}
-
 	// Window creation
-	if runtime.GOOS == "darwin" { // MacOS
+	switch runtime.GOOS {
+	case "darwin": // MacOS
 		glfw.WindowHint(glfw.ContextVersionMajor, 3)
 		glfw.WindowHint(glfw.ContextVersionMinor, 3)
 		glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 		glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
-	} else {
+	case "windows": // Windows
+		glfw.WindowHint(glfw.ContextVersionMajor, 3)
+		glfw.WindowHint(glfw.ContextVersionMinor, 3)
+		glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCompatProfile)
+		glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.False)
+	default:
 		glfw.WindowHint(glfw.ContextVersionMajor, 3)
 		glfw.WindowHint(glfw.ContextVersionMinor, 1)
 		glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLAnyProfile)
 		glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.False)
 	}
-
 	window, err := glfw.CreateWindow(TextureWidth*WindowUpscale, TextureHeight*WindowUpscale, WindowTitle, nil, nil)
 	if err != nil {
 		panic(err)
 	}
 	window.MakeContextCurrent()
-	rm.Window = window
+
+	// Initialize gl
+	err = gl.Init()
+	if err != nil {
+		panic(err)
+	}
 
 	gl.GenFramebuffers(1, &rm.fbo)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, rm.fbo)
@@ -135,12 +152,12 @@ func RenderManagerInit() *RenderManager {
 
 	rm.Pixels = PixelsInit(TextureWidth, TextureHeight)
 
-	return &rm
+	return &rm, window
 }
 
 // Render renders the current state
 // It should be called each frame
-func (rm *RenderManager) Render() {
+func (rm *RenderManager) Render(window *glfw.Window) {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, rm.fbo)
 	gl.Viewport(0, 0, TextureWidth, TextureHeight)
 
@@ -150,16 +167,8 @@ func (rm *RenderManager) Render() {
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, rm.fbo)
 	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
 
-	fbWidth, fbHeight := rm.Window.GetFramebufferSize()
+	fbWidth, fbHeight := window.GetFramebufferSize()
 	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, int32(fbWidth), int32(fbHeight), gl.COLOR_BUFFER_BIT, gl.NEAREST)
-	rm.Window.SwapBuffers()
+	window.SwapBuffers()
 	glfw.PollEvents()
-}
-
-// Check for exit condition
-func (rm *RenderManager) CheckExit() {
-	if rm.Window.GetKey(glfw.KeyEscape) == glfw.Press || rm.Window.ShouldClose() {
-		glfw.Terminate()
-		os.Exit(0)
-	}
 }
