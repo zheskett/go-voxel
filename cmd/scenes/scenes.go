@@ -8,6 +8,43 @@ import (
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
+func VoxelDebugEmptyScene(vox *vxl.Voxels) {
+	brightness := 100.0
+	vox.Lights = append(vox.Lights, vxl.Light{
+		Position: te.Vec3(float32(vox.X/2), 90, float32(vox.Z/2)),
+		Color:    te.Vec3(1.0, 0.95, 0.95).Mul(float32(brightness)),
+	})
+	vox.Lights = append(vox.Lights, vxl.Light{
+		Position: te.Vec3(10, 10, 10),
+		Color:    te.Vec3(1.0, 0.3, 0.3).Mul(float32(brightness / 4.0)),
+	})
+	vox.Lights = append(vox.Lights, vxl.Light{
+		Position: te.Vec3(10, 10, float32(vox.Y-10)),
+		Color:    te.Vec3(0.3, 1.0, 0.3).Mul(float32(brightness / 4.0)),
+	})
+	vox.Lights = append(vox.Lights, vxl.Light{
+		Position: te.Vec3(float32(vox.X-10), 10, 10),
+		Color:    te.Vec3(0.3, 0.3, 1.0).Mul(float32(brightness / 4.0)),
+	})
+	for i := 0; i < vox.X; i++ {
+		for j := 0; j < vox.Z; j++ {
+			// Floor and ceiling
+			vox.SetVoxel(i, 0, j, 200, 200, 200)
+			vox.SetVoxel(i, 100, j, 200, 200, 200)
+			// Walls
+			vox.SetVoxel(0, i, j, 200, 200, 200)
+			vox.SetVoxel(vox.X-1, i, j, 200, 200, 200)
+			vox.SetVoxel(j, i, 0, 200, 200, 200)
+			vox.SetVoxel(j, i, vox.Z-1, 200, 200, 200)
+		}
+	}
+	obj, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T26, 150, [3]byte{220, 220, 220})
+	if err != nil {
+		panic("erorr parsing bunny")
+	}
+	vox.AddVoxelObj(obj, vox.X/4-10, -93, vox.Z/4-10)
+}
+
 // A small room with 3 colored lights and boxes everywhere
 func VoxelDebugSceneSmall(vox *vxl.Voxels) {
 	brightness := 22
@@ -47,6 +84,7 @@ func VoxelDebugSceneSmall(vox *vxl.Voxels) {
 	for i := range 55 {
 		for j := range 100 {
 			vox.SetVoxel(35, j, i, 200, 180, 180)
+			vox.SetVoxel(36, j, i, 200, 180, 180)
 		}
 	}
 

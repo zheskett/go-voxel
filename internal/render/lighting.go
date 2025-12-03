@@ -53,25 +53,27 @@ func GetVoxelShading(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) te.Vector3 {
 }
 
 // Performs the per-voxel lighting (attemps to atleast) by caching shadow data from the voxel face center
+//
+// This actually now works really well, there is no flickering however there is an
+// issue where walls must be < 1 voxel thick when using this or they won't actually
+// be opaque, as the light ray basically jumps out to the nearest corner of the
+// parent voxel
 func shadeVoxel(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) vxl.CachedLighting {
 	intensity := te.Vec3Zero()
 	direction := te.Vec3Zero()
 	x, y, z := float32(hit.IntPos[0]), float32(hit.IntPos[1]), float32(hit.IntPos[2])
-	// The flickering is coming from this. The race condition technically shouldn't
-	// matter (because the lights don't move), but what is happening is depdending on
-	// how the camera is oriented a different face of the voxel is being struck first,
-	// leading to a different exposure angle to the lights and it gets biased towards
-	// one color.
-	voxelcenter := te.Vec3(x+0.5, y+0.5, z+0.5).Add(hit.Normal.Mul(0.5))
+	voxelcenter := te.Vec3(x+0.5, y+0.5, z+0.5)
+	distanceoutvoxel := math32.Sqrt(0.5 * 0.5 * 3)
 	for _, light := range vox.Lights {
 		lightpos := light.Position.Sub(voxelcenter)
 		lightdist := lightpos.Len()
 		lightdir := lightpos.Div(lightdist)
-		recastpos := voxelcenter.Add(hit.Normal.Mul(vxl.VoxelRayDelta + 0.5))
+		outsidedirec := lightdir.SignVec() // Shift over to one of the corners for the shadow vector's origin
+		recastpos := voxelcenter.Add(outsidedirec.Mul(distanceoutvoxel + vxl.VoxelRayDelta))
 		recastray := vxl.Ray{
 			Origin: recastpos,
 			Dir:    lightdir,
-			Tmax:   math32.Min(lightdist, tmax),
+			Tmax:   math32.Min(lightdist-distanceoutvoxel-vxl.VoxelRayDelta, tmax),
 		}
 
 		shadowcast := vox.MarchRay(recastray)

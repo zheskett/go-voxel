@@ -25,12 +25,14 @@ func main() {
 	switch scene {
 	case 1:
 		scenes.VoxelDebugSceneBig(&vox)
+	case 2:
+		scenes.VoxelDebugEmptyScene(&vox)
 	default:
 		scenes.VoxelDebugSceneSmall(&vox)
 	}
 	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()
-	cam.Movespeed = 15
+	cam.Movespeed = 20
 	cam.Lookspeed = 0.005
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)

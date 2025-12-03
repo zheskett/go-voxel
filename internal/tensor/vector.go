@@ -21,18 +21,22 @@ func Vec2(x, y float32) Vector2 {
 	return Vector2{X: x, Y: y}
 }
 
+// Creates the 2D zero vector
 func Vec2Zero() Vector2 {
 	return Vector2{X: 0, Y: 0}
 }
 
+// Creates a 2D vector with similar components
 func Vec2Splat(c float32) Vector2 {
 	return Vector2{X: c, Y: c}
 }
 
+// Creates an x unit vector
 func Vec2X() Vector2 {
 	return Vector2{X: 1, Y: 0}
 }
 
+// Creates an y unit vector
 func Vec2Y() Vector2 {
 	return Vector2{X: 0, Y: 1}
 }
@@ -58,6 +62,7 @@ func (v Vector2) Normalized() Vector2 {
 	return Vector2{v.X * invLen, v.Y * invLen}
 }
 
+// Returns either the normalized vector or the zero vector if the length is too small
 func (v Vector2) NormalizedOrZero() Vector2 {
 	invLen := 1.0 / v.Len()
 	if math32.IsInf(invLen, 1) {
@@ -66,6 +71,7 @@ func (v Vector2) NormalizedOrZero() Vector2 {
 	return Vector2{v.X * invLen, v.Y * invLen}
 }
 
+// Returns the negative of the vector
 func (v Vector2) Neg() Vector2 {
 	return Vector2{-v.X, -v.Y}
 }
@@ -106,16 +112,24 @@ func (v1 Vector2) Cross(v2 Vector2) Vector2 {
 	return Vector2{v1.X*v2.Y - v1.Y*v2.X, v1.Y*v2.X - v1.X*v2.Y}
 }
 
+// Performs a min comparison for all the elements of the vector
 func (v Vector2) ComponentMin(c float32) Vector2 {
 	return Vector2{math32.Min(c, v.X), math32.Min(c, v.Y)}
 }
 
+// Performs a max comparison for all the elements of the vector
 func (v Vector2) ComponentMax(c float32) Vector2 {
 	return Vector2{math32.Max(c, v.X), math32.Max(c, v.Y)}
 }
 
+// Performs a clamp operation on all the components of the vector
 func (v Vector2) ComponentClamp(min, max float32) Vector2 {
 	return v.ComponentMax(min).ComponentMin(max)
+}
+
+// Returns a vector with -1 or +1 corresponding to the sign of each component
+func (v Vector2) SignVec() Vector2 {
+	return Vector2{math32.Copysign(1, v.X), math32.Copysign(1, v.Y)}
 }
 
 // End Vector2 Functions
@@ -127,22 +141,27 @@ func Vec3(x, y, z float32) Vector3 {
 	return Vector3{X: x, Y: y, Z: z}
 }
 
+// Creates the 3D zero vector
 func Vec3Zero() Vector3 {
 	return Vector3{X: 0, Y: 0, Z: 0}
 }
 
+// Creates a 3D vector with similar components
 func Vec3Splat(c float32) Vector3 {
 	return Vector3{X: c, Y: c, Z: c}
 }
 
+// Creates an x unit vector
 func Vec3X() Vector3 {
 	return Vector3{X: 1, Y: 0, Z: 0}
 }
 
+// Creates an y unit vector
 func Vec3Y() Vector3 {
 	return Vector3{X: 0, Y: 1, Z: 0}
 }
 
+// Creates an z unit vector
 func Vec3Z() Vector3 {
 	return Vector3{X: 0, Y: 0, Z: 1}
 }
@@ -168,6 +187,7 @@ func (v Vector3) Normalized() Vector3 {
 	return Vector3{v.X * invLen, v.Y * invLen, v.Z * invLen}
 }
 
+// Returns either the normalized vector or the zero vector if the length is too small
 func (v Vector3) NormalizedOrZero() Vector3 {
 	invLen := 1.0 / v.Len()
 	if math32.IsInf(invLen, 1) {
@@ -176,6 +196,7 @@ func (v Vector3) NormalizedOrZero() Vector3 {
 	return Vector3{v.X * invLen, v.Y * invLen, v.Z * invLen}
 }
 
+// Returns the negative of the vector
 func (v Vector3) Neg() Vector3 {
 	return Vector3{-v.X, -v.Y, -v.Z}
 }
@@ -220,16 +241,24 @@ func (v1 Vector3) Cross(v2 Vector3) Vector3 {
 	}
 }
 
+// Performs a min comparison for all the elements of the vector
 func (v Vector3) ComponentMin(c float32) Vector3 {
 	return Vector3{math32.Min(c, v.X), math32.Min(c, v.Y), math32.Min(c, v.Z)}
 }
 
+// Performs a max comparison for all the elements of the vector
 func (v Vector3) ComponentMax(c float32) Vector3 {
 	return Vector3{math32.Max(c, v.X), math32.Max(c, v.Y), math32.Max(c, v.Z)}
 }
 
+// Performs a clamp operation on all the components of the vector
 func (v Vector3) ComponentClamp(min, max float32) Vector3 {
 	return v.ComponentMax(min).ComponentMin(max)
+}
+
+// Returns a vector with -1 or +1 corresponding to the sign of each component
+func (v Vector3) SignVec() Vector3 {
+	return Vector3{math32.Copysign(1, v.X), math32.Copysign(1, v.Y), math32.Copysign(1, v.Z)}
 }
 
 // End Vector3 Functions

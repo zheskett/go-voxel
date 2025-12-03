@@ -71,8 +71,7 @@ type Voxels struct {
 	// Actually, this would be really easy to bake lighting as long as we aren't moving the lights at runtime
 	// Doing realtime lighting just seems more interesting tho
 	LightCached BitArray // Whether or not we already having lighting data for that frame
-	// There are terrible race conditions happening in this that causes really bad flickering
-	Lighting []CachedLighting
+	Lighting    []CachedLighting
 
 	Lights []Light // Shouldn't be in here probably, maybe in another larger structure holding all worlds stuff
 }

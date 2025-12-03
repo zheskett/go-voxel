@@ -132,11 +132,9 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 				if hit.Hit {
 					color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
-					/* Two choices for lighting, doing it per pixel or per voxel. The per-voxel one has
-					this terrible flickering due to some race conditions that I don't know how to
-					fix, tho... */
-					shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
-					// shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
+					/* Two choices for lighting, doing it per pixel or per voxel */
+					// shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
+					shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
 
 					shadedcolor := shadedintensity.MulComponent(color).ComponentMin(255.0)
 					pix.SetPixel(column, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
@@ -188,7 +186,6 @@ func UpdateCamInputGLFW(cam *Camera, window *glfw.Window, frame *FrameData) {
 	}
 	cam.UpdateRotation(float32(rx), float32(ry), float32(rz), frame)
 	cam.UpdatePosition(float32(tx), float32(ty), float32(tz), frame)
-
 }
 
 func UpdateCamInputGLFWFPS(cam *Camera, window *glfw.Window, frame *FrameData) {
