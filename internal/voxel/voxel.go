@@ -37,6 +37,17 @@ func (bits *BitArray) Set(index int) {
 	bits.bits[bucket] |= mask
 }
 
+func (bits *BitArray) Put(index int, value bool) {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	if value {
+		bits.bits[bucket] |= mask
+	} else {
+		bits.bits[bucket] &= ^mask
+	}
+}
+
 func (bits *BitArray) Reset(index int) {
 	bucket := index / 64
 	shift := index % 64
