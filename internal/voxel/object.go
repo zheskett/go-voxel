@@ -81,16 +81,22 @@ func calcEdgeSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resoluti
 	// and length L, where L is the length of the edge, are added to S_e
 	for _, e := range obj.Edges {
 		v1, v2 := obj.Vertices[e[0]], obj.Vertices[e[1]]
-		_ = v2.Sub(v1).Normalized().Mul(vLen)
+		stepVec := v2.Sub(v1).Normalized().Mul(vLen * 0.5)
 
+		// While pointing towards v2
+		for pos := v1; v2.Sub(pos).Dot(stepVec) > 0; pos = pos.Add(stepVec) {
+			cX, cY, cZ := idxPos(pos, resolution)
+			for i := -1; i <= 1; i++ {
+				for j := -1; j <= 1; j++ {
+					for k := -1; k <= 1; k++ {
+						if insideCylinder(cX+k, cY+j, cZ+i, boundRad, v1, v2, vLen, resolution) {
+							set.Set(bitIdx(cX+k, cY+j, cZ+i, resolution))
+						}
+					}
+				}
+			}
+		}
 	}
-
-	ErrorSilent(set)
-	ErrorSilent(obj)
-	ErrorSilent(boundRad)
-	ErrorSilent(vLen)
-	ErrorSilent(resolution)
-	ErrorSilent(insideCylinder)
 }
 
 func bitIdx(x, y, z, resolution int) int {
