@@ -40,7 +40,7 @@ func VoxelDebugEmptyScene(vox *vxl.Voxels) {
 	}
 	obj, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T26, 150, [3]byte{220, 220, 220})
 	if err != nil {
-		panic("erorr parsing bunny")
+		panic("error parsing bunny")
 	}
 	vox.AddVoxelObj(obj, vox.X/4-10, -93, vox.Z/4-10)
 }

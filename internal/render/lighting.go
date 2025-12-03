@@ -52,7 +52,7 @@ func GetVoxelShading(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) te.Vector3 {
 	return light.Light.Mul(brightness)
 }
 
-// Performs the per-voxel lighting (attemps to atleast) by caching shadow data from the voxel face center
+// Performs the per-voxel lighting (attempts to at least) by caching shadow data from the voxel face center
 //
 // This actually now works really well, there is no flickering however there is an
 // issue where walls must be < 1 voxel thick when using this or they won't actually
