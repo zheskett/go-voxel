@@ -2,6 +2,7 @@ package voxel
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/chewxy/math32"
 	"github.com/zheskett/go-voxel/internal/parser"
@@ -9,9 +10,9 @@ import (
 )
 
 type VoxelObj struct {
-	resolution int
-	Presence   BitArray
-	Color      [3]byte
+	X, Y, Z  int
+	Presence BitArray
+	Color    [3]byte
 }
 
 type ConnectivityDistance int
@@ -57,23 +58,25 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 	calcVertSet(&set, obj, boundRad, vLen, resolution) // S_v
 	calcEdgeSet(&set, obj, boundRad, vLen, resolution) // S_e
 	calcBodySet(&set, obj, cd, vLen, resolution)       // S_b
+	vObj := VoxelObj{resolution, resolution, resolution, set, color}
+	squash(&vObj, resolution)
 
-	return VoxelObj{resolution, set, color}, nil
+	return vObj, nil
 }
 
 func (vObj *VoxelObj) Index(x, y, z int) int {
-	return bitIdx(x, y, z, vObj.resolution)
+	return vObj.X*vObj.Y*z + vObj.X*y + x
 }
 
 // Flips the voxels in the x, y, and z directions.
 // Flip x -> y -> z
 func (vObj *VoxelObj) Flip(flipX, flipY, flipZ bool) {
 	if flipX {
-		for z := range vObj.resolution {
-			for y := range vObj.resolution {
-				for x := range vObj.resolution / 2 {
+		for z := range vObj.Z {
+			for y := range vObj.Y {
+				for x := range vObj.X / 2 {
 					idx1 := vObj.Index(x, y, z)
-					idx2 := vObj.Index(vObj.resolution-x-1, y, z)
+					idx2 := vObj.Index(vObj.X-x-1, y, z)
 					oldSet := vObj.Presence.Get(idx1)
 					vObj.Presence.Put(idx1, vObj.Presence.Get(idx2))
 					vObj.Presence.Put(idx2, oldSet)
@@ -82,11 +85,11 @@ func (vObj *VoxelObj) Flip(flipX, flipY, flipZ bool) {
 		}
 	}
 	if flipY {
-		for z := range vObj.resolution {
-			for y := range vObj.resolution / 2 {
-				for x := range vObj.resolution {
+		for z := range vObj.Z {
+			for y := range vObj.Y / 2 {
+				for x := range vObj.X {
 					idx1 := vObj.Index(x, y, z)
-					idx2 := vObj.Index(x, vObj.resolution-y-1, z)
+					idx2 := vObj.Index(x, vObj.Y-y-1, z)
 					oldSet := vObj.Presence.Get(idx1)
 					vObj.Presence.Put(idx1, vObj.Presence.Get(idx2))
 					vObj.Presence.Put(idx2, oldSet)
@@ -95,11 +98,11 @@ func (vObj *VoxelObj) Flip(flipX, flipY, flipZ bool) {
 		}
 	}
 	if flipZ {
-		for z := range vObj.resolution / 2 {
-			for y := range vObj.resolution {
-				for x := range vObj.resolution {
+		for z := range vObj.X / 2 {
+			for y := range vObj.Y {
+				for x := range vObj.Z {
 					idx1 := vObj.Index(x, y, z)
-					idx2 := vObj.Index(x, y, vObj.resolution-z-1)
+					idx2 := vObj.Index(x, y, vObj.Z-z-1)
 					oldSet := vObj.Presence.Get(idx1)
 					vObj.Presence.Put(idx1, vObj.Presence.Get(idx2))
 					vObj.Presence.Put(idx2, oldSet)
@@ -269,4 +272,102 @@ func insidePlaneTriangle(x, y, z int, e1, e2, e3 plane, vLen float32, resolution
 	distanceE2 := e2.normVec.Dot(vPos) + e2.d
 	distanceE3 := e3.normVec.Dot(vPos) + e3.d
 	return distanceE1 > 0 && distanceE2 > 0 && distanceE3 > 0
+}
+
+// Squashes the empty space on each axis to get accurate X, Y, Z
+func squash(vObj *VoxelObj, resolution int) {
+	minX, minY, minZ, maxX, maxY, maxZ := findBounds(vObj, resolution)
+	newX, newY, newZ := maxX-minX+1, maxY-minY+1, maxZ-minZ+1
+	newPresence := BitArrayInit(newX * newY * newZ)
+	currX, currY, currZ := 0, 0, 0
+	for z := minZ; z <= maxZ; z++ {
+		for y := minY; y <= maxY; y++ {
+			for x := minX; x <= maxX; x++ {
+				isFilled := vObj.Presence.Get(vObj.Index(x, y, z))
+				if isFilled {
+					newPresence.Set(currZ*newY*newX + currY*newX + currX)
+				}
+				currX++
+			}
+			currX = 0
+			currY++
+		}
+		currY = 0
+		currZ++
+	}
+	vObj.Presence = newPresence
+	vObj.X, vObj.Y, vObj.Z = newX, newY, newZ
+}
+
+func findBounds(vObj *VoxelObj, resolution int) (int, int, int, int, int, int) {
+	minXC, minYC, minZC := 0, 0, 0
+	maxXC, maxYC, maxZC := resolution-1, resolution-1, resolution-1
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		foundmin, foundmax := false, false
+		for x := range resolution {
+			for z := range resolution {
+				for y := range resolution {
+					if !foundmin && vObj.Presence.Get(vObj.Index(x, y, z)) {
+						minXC = x
+						foundmin = true
+					}
+					if !foundmax && vObj.Presence.Get(vObj.Index(resolution-x-1, y, z)) {
+						maxXC = resolution - x - 1
+						foundmax = true
+					}
+					if foundmin && foundmax {
+						return
+					}
+				}
+			}
+		}
+	})
+
+	wg.Go(func() {
+		foundmin, foundmax := false, false
+		for y := range resolution {
+			for z := range resolution {
+				for x := range resolution {
+					if !foundmin && vObj.Presence.Get(vObj.Index(x, y, z)) {
+						minYC = y
+						foundmin = true
+					}
+					if !foundmax && vObj.Presence.Get(vObj.Index(x, resolution-y-1, z)) {
+						maxYC = resolution - y - 1
+						foundmax = true
+					}
+					if foundmin && foundmax {
+						return
+					}
+				}
+			}
+		}
+	})
+
+	wg.Go(func() {
+		foundmin, foundmax := false, false
+		for z := range resolution {
+			for y := range resolution {
+				for x := range resolution {
+					if !foundmin && vObj.Presence.Get(vObj.Index(x, y, z)) {
+						minZC = z
+						foundmin = true
+					}
+					if !foundmax && vObj.Presence.Get(vObj.Index(x, y, resolution-z-1)) {
+						maxZC = resolution - z - 1
+						foundmax = true
+					}
+					if foundmin && foundmax {
+						return
+					}
+				}
+			}
+		}
+	})
+
+	wg.Wait()
+
+	return minXC, minYC, minZC, maxXC, maxYC, maxZC
 }

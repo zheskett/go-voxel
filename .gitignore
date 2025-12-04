@@ -10,6 +10,7 @@
 
 # go-voxel binary
 /go-voxel
+/test-parser
 
 # Test binary, built with `go test -c`
 *.test

@@ -38,18 +38,18 @@ func VoxelDebugEmptyScene(vox *vxl.Voxels) {
 			vox.SetVoxel(j, i, vox.Z-1, 200, 200, 200)
 		}
 	}
-	obj, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T6, 200, [3]byte{220, 220, 220})
+	obj, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T26, 200, [3]byte{220, 220, 220})
 	if err != nil {
 		panic(err)
 	}
 	obj.Flip(false, true, false)
-	vox.AddVoxelObj(obj, vox.X/2-35, 0, vox.Z/2-35)
+	vox.AddVoxelObj(obj, vox.X-120, 10, vox.Z-120)
 	cow, err := vxl.VoxelizePath("assets/cow.obj", vxl.T6, 165, [3]byte{160, 82, 45})
 	if err != nil {
 		panic(err)
 	}
 	cow.Flip(false, true, false)
-	vox.AddVoxelObj(cow, vox.X/8-35, -40, vox.Z/8-35)
+	vox.AddVoxelObj(cow, vox.X/4-35, 10, vox.Z/4-35)
 }
 
 // A small room with 3 colored lights and boxes everywhere

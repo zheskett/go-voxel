@@ -45,6 +45,7 @@ func main() {
 	engine.Camera = cam
 	engine.Voxels = vox
 	engine.Framedata = ren.FrameDataInit()
+	engine.SetScrollCallback()
 
 	for {
 		engine.UpdateInputs()

@@ -12,10 +12,10 @@ type BitArray struct {
 }
 
 func BitArrayInit(len int) BitArray {
-	len = len / 64
 	if len%64 != 0 {
-		len += 1
+		len += 64
 	}
+	len = len / 64
 	bits := make([]uint64, len)
 	for i := range len {
 		bits[i] = 0
@@ -249,9 +249,9 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 
 // Adds a voxel object to the world
 func (vox *Voxels) AddVoxelObj(vObj VoxelObj, x, y, z int) {
-	for i := range vObj.resolution {
-		for j := range vObj.resolution {
-			for k := range vObj.resolution {
+	for i := range vObj.Z {
+		for j := range vObj.Y {
+			for k := range vObj.X {
 				idx := vObj.Index(k, j, i)
 				if vObj.Presence.Get(idx) && vox.Surrounds(x+k, y+j, z+i) {
 					vox.SetVoxel(x+k, y+j, z+i, vObj.Color[0], vObj.Color[1], vObj.Color[2])

@@ -8,6 +8,10 @@ import (
 	"github.com/zheskett/go-voxel/internal/voxel"
 )
 
+const (
+	moveSpeedInc = 1.0
+)
+
 type Engine struct {
 	Renderer  *render.RenderManager
 	Window    *glfw.Window
@@ -36,4 +40,10 @@ func (eng *Engine) CheckExit() {
 		glfw.Terminate()
 		os.Exit(0)
 	}
+}
+
+func (eng *Engine) SetScrollCallback() {
+	eng.Window.SetScrollCallback(func(w *glfw.Window, _ float64, yoff float64) {
+		eng.Camera.Movespeed = max(eng.Camera.Movespeed+float32(yoff)*moveSpeedInc, 0)
+	})
 }
