@@ -6,6 +6,12 @@ import (
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
+// The way the Unity HDRP prevents the brightspots is by just clamping the distance
+// to prevent lights getting too bright
+const (
+	MinDistance float32 = 8.0
+)
+
 // Performs the per-pixel lighting by sending secondary rays back towards all of the lights in the scene
 // Much slower than below funcs, but looks very nice
 func GetPixelShading(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) te.Vector3 {
@@ -26,7 +32,7 @@ func GetPixelShading(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) te.Vector3 {
 		// If we don't hit anything, the pixel has direct view of the light, as the rayline
 		// has no obstruction
 		if !shadowcast.Hit {
-			brightness := math32.Max(0.0, hit.Normal.Dot(lightdir)) / (lightdist * lightdist)
+			brightness := math32.Max(0.0, hit.Normal.Dot(lightdir)) * lightFalloffCurve(lightdist)
 			intensity = intensity.Add(light.Color.Mul(brightness))
 		}
 	}
@@ -81,11 +87,15 @@ func shadeVoxel(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) vxl.CachedLightin
 		// If we don't hit anything, the pixel has direct view of the light, as the rayline
 		// has no obstruction
 		if !shadowcast.Hit {
-			intensity = intensity.Add(light.Color.Div(lightdist * lightdist))
+			intensity = intensity.Add(light.Color.Mul(lightFalloffCurve(lightdist)))
 			direction = direction.Add(lightpos)
 		}
 	}
 	direction = direction.Normalized()
 
 	return vxl.CachedLighting{Light: intensity, Dir: direction}
+}
+
+func lightFalloffCurve(dist float32) float32 {
+	return 1.0 / math32.Max(dist*dist, MinDistance*MinDistance)
 }

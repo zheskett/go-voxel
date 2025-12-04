@@ -120,24 +120,30 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 	// Shouldn't be here, but tbh light info shouldn't be in the Voxel struct at all probably
 	vox.LightCached.Clear()
 
-	// Iterate and spawn a thread for each row of the pixel buffer
 	threads := sync.WaitGroup{}
-	for row := 0; row < pix.Height; row++ {
+	for thread := range RenderThreads {
 		threads.Go(func() {
-			// Iterate each column of the pixel row
-			for column := 0; column < pix.Width; column++ {
-				ray := cam.getPixelRay(column, row, basis)
+			startrow := thread * pix.Height / RenderThreads
+			endrow := (thread + 1) * pix.Height / RenderThreads
 
-				hit := vox.MarchRay(ray)
-				if hit.Hit {
-					color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
+			for row := startrow; row < endrow; row++ {
+				for col := 0; col < pix.Width; col++ {
 
-					/* Two choices for lighting, doing it per pixel or per voxel */
-					shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
-					// shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
+					ray := cam.getPixelRay(col, row, basis)
 
-					shadedcolor := shadedintensity.MulComponent(color).ComponentMin(255.0)
-					pix.SetPixel(column, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
+					hit := vox.MarchRay(ray)
+					if hit.Hit {
+						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
+
+						/* Two choices for lighting, doing it per pixel or per voxel */
+						// shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
+						shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
+
+						// Make sure that the minimum brightness even in complete shadow is 5%
+						shadedcolor := shadedintensity.ComponentMax(0.05).MulComponent(color).ComponentMin(255.0)
+
+						pix.SetPixel(col, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
+					}
 				}
 			}
 		})

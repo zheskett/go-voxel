@@ -26,6 +26,11 @@ const (
 	BackgroundBlue  = 40
 )
 
+// Number of goroutines that are dispatched to render the frame
+const (
+	RenderThreads = 16
+)
+
 // FrameData allows camera movements to be made independent of FPS for a smoother movements
 type FrameData struct {
 	Previous time.Time
