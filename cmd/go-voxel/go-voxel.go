@@ -19,14 +19,18 @@ func init() {
 
 func main() {
 	vox := vxl.VoxelsInit(256, 256, 256)
+	renderDist := float32(256.0)
 	var scene int
-	fmt.Printf("enter 1 for the big scene and anything else for the small room with lots of lights\n")
+	fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, anything else for small scene\n")
 	fmt.Scanln(&scene)
 	switch scene {
 	case 1:
 		scenes.VoxelDebugSceneBig(&vox)
 	case 2:
 		scenes.VoxelDebugEmptyScene(&vox)
+	case 3:
+		scenes.VoxelDebugSceneHugeBunny(&vox)
+		renderDist = 560.0
 	default:
 		scenes.VoxelDebugSceneSmall(&vox)
 	}
@@ -37,7 +41,7 @@ func main() {
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
 	cam.Pos = te.Vec3(16, 4, 16)
-	cam.RenderDistance = 256.0
+	cam.RenderDistance = renderDist
 
 	engine := engine.Engine{}
 	engine.Renderer = rm
