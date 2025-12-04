@@ -26,7 +26,7 @@ func GetPixelShading(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) te.Vector3 {
 		// If we don't hit anything, the pixel has direct view of the light, as the rayline
 		// has no obstruction
 		if !shadowcast.Hit {
-			brightness := math32.Max(0.0, hit.Normal.Dot(lightdir)) / lightdist
+			brightness := math32.Max(0.0, hit.Normal.Dot(lightdir)) / (lightdist * lightdist)
 			intensity = intensity.Add(light.Color.Mul(brightness))
 		}
 	}
@@ -81,7 +81,7 @@ func shadeVoxel(vox *vxl.Voxels, hit vxl.RayHit, tmax float32) vxl.CachedLightin
 		// If we don't hit anything, the pixel has direct view of the light, as the rayline
 		// has no obstruction
 		if !shadowcast.Hit {
-			intensity = intensity.Add(light.Color.Div(lightdist))
+			intensity = intensity.Add(light.Color.Div(lightdist * lightdist))
 			direction = direction.Add(lightpos)
 		}
 	}

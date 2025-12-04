@@ -9,9 +9,9 @@ import (
 )
 
 func VoxelDebugEmptyScene(vox *vxl.Voxels) {
-	brightness := 100.0
+	brightness := 10000.0
 	vox.Lights = append(vox.Lights, vxl.Light{
-		Position: te.Vec3(float32(vox.X/2), 90, float32(vox.Z/2)),
+		Position: te.Vec3(float32(vox.X/2), 70, float32(vox.Z/2)),
 		Color:    te.Vec3(1.0, 0.95, 0.95).Mul(float32(brightness)),
 	})
 	vox.Lights = append(vox.Lights, vxl.Light{
@@ -54,7 +54,7 @@ func VoxelDebugEmptyScene(vox *vxl.Voxels) {
 
 // A small room with 3 colored lights and boxes everywhere
 func VoxelDebugSceneSmall(vox *vxl.Voxels) {
-	brightness := 22
+	brightness := 500
 	light := vxl.Light{
 		Position: te.Vec3(50, 15, 30),
 		Color:    te.Vec3(0.5, 0.5, 1.0).Mul(float32(brightness)),
@@ -116,7 +116,7 @@ func VoxelDebugSceneSmall(vox *vxl.Voxels) {
 
 // A massive open scene with a bunch of random stuff
 func VoxelDebugSceneBig(vox *vxl.Voxels) {
-	brightness := 120
+	brightness := 15000
 	light := vxl.Light{
 		Position: te.Vec3(64, 32, 96),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),

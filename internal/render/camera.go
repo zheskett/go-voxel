@@ -133,8 +133,8 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 					color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
 					/* Two choices for lighting, doing it per pixel or per voxel */
-					// shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
-					shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
+					shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
+					// shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
 
 					shadedcolor := shadedintensity.MulComponent(color).ComponentMin(255.0)
 					pix.SetPixel(column, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
