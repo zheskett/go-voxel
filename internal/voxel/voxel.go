@@ -119,10 +119,6 @@ func (vox *Voxels) Surrounds(x, y, z int) bool {
 	return x < vox.X && y < vox.Y && z < vox.Z && x >= 0 && y >= 0 && z >= 0
 }
 
-type Marchable interface {
-	MarchRay(ray Ray) RayHit
-}
-
 // Enum for axis
 // Probably unnecessary for this use
 type axis uint8

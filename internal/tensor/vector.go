@@ -2,6 +2,7 @@ package tensor
 
 import (
 	"github.com/chewxy/math32"
+	"github.com/zheskett/go-voxel/internal/engine"
 )
 
 // A 2D Vector
@@ -44,6 +45,11 @@ func Vec2Y() Vector2 {
 // Returns the Elements of the vector
 func (v Vector2) Elms() (float32, float32) {
 	return v.X, v.Y
+}
+
+// Returns an array of the vector components in order
+func (v Vector2) AsArray() [2]float32 {
+	return [2]float32{v.X, v.Y}
 }
 
 // Returns the length of the vector
@@ -171,6 +177,11 @@ func (v Vector3) Elms() (float32, float32, float32) {
 	return v.X, v.Y, v.Z
 }
 
+// Returns an array of the vector components in order
+func (v Vector3) AsArray() [3]float32 {
+	return [3]float32{v.X, v.Y, v.Z}
+}
+
 // Returns the length of the vector
 func (v Vector3) Len() float32 {
 	return math32.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
@@ -262,3 +273,7 @@ func (v Vector3) SignVec() Vector3 {
 }
 
 // End Vector3 Functions
+
+func (v Vector3) Convert(to, from engine.Basis) Vector3 {
+	return to.
+}

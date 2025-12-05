@@ -26,3 +26,7 @@ type RayHit struct {
 	Position te.Vector3
 	Normal   te.Vector3
 }
+
+type Marchable interface {
+	MarchRay(ray Ray) RayHit
+}
