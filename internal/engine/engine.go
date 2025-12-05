@@ -16,7 +16,7 @@ type Engine struct {
 	Renderer *render.RenderManager
 	Window   *glfw.Window
 	Camera   render.Camera
-	// Voxels    voxel.Voxels
+	Voxels    voxel.Voxels
 	Framedata render.FrameData
 
 	Voxtree voxel.BrickTree

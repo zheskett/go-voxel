@@ -2,7 +2,6 @@
 package render
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/chewxy/math32"
@@ -98,7 +97,7 @@ func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ra
 	}
 }
 
-func (cam *Camera) RenderVoxelsTree(vox *vxl.BrickTree, pix *Pixels) {
+func (cam *Camera) RenderVoxelsTree(vtree *vxl.BrickTree, pix *Pixels) {
 	basis := CameraRayBasisInit(cam, pix)
 
 	threads := sync.WaitGroup{}
@@ -112,9 +111,8 @@ func (cam *Camera) RenderVoxelsTree(vox *vxl.BrickTree, pix *Pixels) {
 
 					ray := cam.getPixelRay(col, row, basis)
 
-					hit := vox.MarchRay(ray)
+					hit := vtree.MarchRay(ray)
 					if hit.Hit {
-						fmt.Printf("we hit something")
 						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
 						shadedintensity := te.Vec3Splat(1.0)
@@ -131,41 +129,41 @@ func (cam *Camera) RenderVoxelsTree(vox *vxl.BrickTree, pix *Pixels) {
 	threads.Wait()
 }
 
-// func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
-// 	basis := CameraRayBasisInit(cam, pix)
-// 	// Shouldn't be here, but tbh light info shouldn't be in the Voxel struct at all probably
-// 	vox.LightCached.Clear()
+func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
+	basis := CameraRayBasisInit(cam, pix)
+	// Shouldn't be here, but tbh light info shouldn't be in the Voxel struct at all probably
+	vox.LightCached.Clear()
 
-// 	threads := sync.WaitGroup{}
-// 	for thread := range RenderThreads {
-// 		threads.Go(func() {
-// 			startrow := thread * pix.Height / RenderThreads
-// 			endrow := (thread + 1) * pix.Height / RenderThreads
+	threads := sync.WaitGroup{}
+	for thread := range RenderThreads {
+		threads.Go(func() {
+			startrow := thread * pix.Height / RenderThreads
+			endrow := (thread + 1) * pix.Height / RenderThreads
 
-// 			for row := startrow; row < endrow; row++ {
-// 				for col := 0; col < pix.Width; col++ {
+			for row := startrow; row < endrow; row++ {
+				for col := 0; col < pix.Width; col++ {
 
-// 					ray := cam.getPixelRay(col, row, basis)
+					ray := cam.getPixelRay(col, row, basis)
 
-// 					hit := vox.MarchRay(ray)
-// 					if hit.Hit {
-// 						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
+					hit := vox.MarchRay(ray)
+					if hit.Hit {
+						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
-// 						/* Two choices for lighting, doing it per pixel or per voxel */
-// 						// shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
-// 						shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
+						/* Two choices for lighting, doing it per pixel or per voxel */
+						// shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
+						shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
 
-// 						// Make sure that the minimum brightness even in complete shadow is 5%
-// 						shadedcolor := shadedintensity.ComponentMax(0.05).MulComponent(color).ComponentMin(255.0)
+						// Make sure that the minimum brightness even in complete shadow is 5%
+						shadedcolor := shadedintensity.ComponentMax(0.05).MulComponent(color).ComponentMin(255.0)
 
-// 						pix.SetPixel(col, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
-// 					}
-// 				}
-// 			}
-// 		})
-// 	}
-// 	threads.Wait()
-// }
+						pix.SetPixel(col, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
+					}
+				}
+			}
+		})
+	}
+	threads.Wait()
+}
 
 func UpdateCamInputGLFWFPS(cam *Camera, window *glfw.Window, frame *FrameData) {
 	tx, ty, tz := 0, 0, 0

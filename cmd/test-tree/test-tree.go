@@ -3,12 +3,26 @@ package main
 import (
 	"fmt"
 
+	"github.com/zheskett/go-voxel/internal/tensor"
 	"github.com/zheskett/go-voxel/internal/voxel"
 )
 
 func main() {
 	size := 16
 	tree := voxel.BrickTreeInit(size, size, size)
+	if tree.Root.Brick != nil {
+		panic("what??")
+	}
+	if tree.Root.IsBranch() {
+		panic("don't understand")
+	}
+	if tree.Root.IsLeaf() {
+		panic("there shouldn't be data there yet")
+	}
+	if !tree.Root.IsEmtpy() {
+		panic("why is there no assert")
+	}
+
 	for i := range size {
 		tree.Insert(i, i, i, 0, 0, 0)
 	}
@@ -20,7 +34,13 @@ func main() {
 	bricks := countBricks(&tree)
 	fmt.Printf("bricks in the tree: %d\n", bricks)
 
-	fmt.Printf("done")
+	fmt.Printf("done\n")
+
+	tree = voxel.BrickTreeInit(size, size, size)
+	tree.Insert(10, 10, 10, 0, 255, 255)
+	ray := voxel.Ray{Origin: tensor.Vec3(1, 1, 1), Dir: tensor.Vec3(1, 1, 1).Normalized(), Tmax: 1e4}
+	hit := tree.MarchRay(ray)
+	fmt.Printf("direct rayhit: %+v\n", hit)
 }
 
 func countBricks(br *voxel.BrickTree) int {
@@ -49,7 +69,6 @@ func recurCountVoxels(node *voxel.TreeNode) int {
 	if node == nil {
 		return 0
 	}
-
 	if node.IsLeaf() {
 		count := 0
 		for i := range voxel.BrickTotal {
@@ -59,16 +78,13 @@ func recurCountVoxels(node *voxel.TreeNode) int {
 		}
 		return count
 	}
-
 	if node.IsBranch() {
 		count := 0
 		for i := range 8 {
 			count += recurCountVoxels(node.Leaves[i])
 		}
-
 		return count
 	}
-
 	return 0
 }
 

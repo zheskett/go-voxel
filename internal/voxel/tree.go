@@ -1,8 +1,6 @@
 package voxel
 
 import (
-	"fmt"
-
 	"github.com/chewxy/math32"
 	"github.com/zheskett/go-voxel/internal/tensor"
 )
@@ -61,24 +59,29 @@ func (box *AABB) RayIntersection(ray Ray) (float32, float32) {
 	orig := ray.Origin.AsArray()
 	low := box.Low.AsArray()
 	high := box.High.AsArray()
-	for i := range 3 {
-		if dirs[i] != 0.0 {
-			invd := 1.0 / dirs[i]
-			t0 := (float32(low[i]) - orig[i]) * invd
-			t1 := (float32(high[i]) - orig[i]) * invd
 
-			if invd < 0.0 {
-				t0, t1 = t1, t0
+	for i := range 3 {
+		if dirs[i] == 0.0 {
+			if orig[i] < float32(low[i]) || orig[i] >= float32(high[i]) {
+				return 1, 0
 			}
-			if t0 > tmin {
-				tmin = t0
-			}
-			if t1 < tmax {
-				tmax = t1
-			}
-			if tmax < tmin {
-				return 1, 0 // There isn't an intersection
-			}
+			continue
+		}
+		invd := 1.0 / dirs[i]
+		t0 := (float32(low[i]) - orig[i]) * invd
+		t1 := (float32(high[i]) - orig[i]) * invd
+
+		if invd < 0.0 {
+			t0, t1 = t1, t0
+		}
+		if t0 > tmin {
+			tmin = t0
+		}
+		if t1 < tmax {
+			tmax = t1
+		}
+		if tmax < tmin {
+			return 1, 0 // There isn't an intersection
 		}
 	}
 
@@ -89,7 +92,7 @@ func (box *AABB) Subdivide() [8]AABB {
 	low, high := box.Low.AsArray(), box.High.AsArray()
 	lx, ly, lz := low[0], low[1], low[2]
 	hx, hy, hz := high[0], high[1], high[2]
-	mx, my, mz := lx+(high[0]-low[0])/2, ly+(high[1]-low[1])/2, lz+(high[2]-low[2])/2
+	mx, my, mz := (high[0]+low[0])/2, (high[1]+low[1])/2, (high[2]+low[2])/2
 
 	return [8]AABB{
 		AABBInit(lx, ly, lz, mx, my, mz),
@@ -114,11 +117,15 @@ func TreeNodeInit(box AABB) TreeNode {
 }
 
 func (node *TreeNode) IsBranch() bool {
-	return node.Brick == nil && node.Leaves[0] != nil
+	return node.IsEmtpy() && node.Leaves[0] != nil
 }
 
 func (node *TreeNode) IsLeaf() bool {
-	return node.Brick != nil
+	return !node.IsEmtpy() && node.Leaves[0] == nil
+}
+
+func (node *TreeNode) IsEmtpy() bool {
+	return node.Brick == nil
 }
 
 func (node *TreeNode) recursiveInsert(x, y, z int, r, g, b byte) bool {
@@ -130,21 +137,17 @@ func (node *TreeNode) recursiveInsert(x, y, z int, r, g, b byte) bool {
 	}
 	// We already have a brick, so just put the voxel in it
 	if node.IsLeaf() {
-		localpos := pos.Sub(node.Box.Low)
-		node.Brick.SetVoxel(localpos.x, localpos.y, localpos.z, r, g, b)
+		node.insertLocalBrick(pos, r, g, b)
 		return true
 	}
 
 	boxsize := node.Box.Size()
 	// There is no brick, but one can be directly created
-	if boxsize.x == BrickSize && boxsize.y == BrickSize && boxsize.z == BrickSize {
+	if node.IsEmtpy() && boxsize.x == BrickSize && boxsize.y == BrickSize && boxsize.z == BrickSize {
 		brick := BrickInit()
 		node.Brick = &brick
-		localpos := pos.Sub(node.Box.Low)
-		node.Brick.SetVoxel(localpos.x, localpos.y, localpos.z, r, g, b)
 
-		fmt.Printf("inserting a brick into tree\n")
-
+		node.insertLocalBrick(pos, r, g, b)
 		return true
 	}
 
@@ -160,6 +163,11 @@ func (node *TreeNode) recursiveInsert(x, y, z int, r, g, b byte) bool {
 	}
 
 	return false
+}
+
+func (node *TreeNode) insertLocalBrick(pos IVec3, r byte, g byte, b byte) {
+	localpos := pos.Sub(node.Box.Low)
+	node.Brick.SetVoxel(localpos.x, localpos.y, localpos.z, r, g, b)
 }
 
 func (node *TreeNode) Subdivide() {
@@ -179,9 +187,7 @@ func (node *TreeNode) MarchRay(ray Ray) RayHit {
 	}
 
 	if node.IsLeaf() {
-		fmt.Printf("it is a leaf, sending a ray into the brick")
-
-		originatentry := ray.Origin.Add(ray.Dir.Mul(tmin + 0.001))
+		originatentry := ray.Origin.Add(ray.Dir.Mul(tmin))
 		localorigin := originatentry.Sub(tensor.Vec3(
 			float32(node.Box.Low.x),
 			float32(node.Box.Low.y),
@@ -196,7 +202,7 @@ func (node *TreeNode) MarchRay(ray Ray) RayHit {
 
 		hit := node.Brick.MarchRay(brickray)
 		if hit.Hit {
-			hit.Time += tmax
+			hit.Time += tmin
 			hit.Position = ray.Origin.Add(ray.Dir.Mul(hit.Time))
 			hit.IntPos[0] += node.Box.Low.x
 			hit.IntPos[1] += node.Box.Low.y
@@ -215,7 +221,6 @@ func (node *TreeNode) MarchRay(ray Ray) RayHit {
 		closesthit := RayHit{Hit: false}
 		closesttime := ray.Tmax
 
-		fmt.Printf("going to recursively traverse all leaf bricks ")
 		for i := range 8 {
 			if node.Leaves[i] != nil {
 				hit := node.Leaves[i].MarchRay(ray)
@@ -229,7 +234,7 @@ func (node *TreeNode) MarchRay(ray Ray) RayHit {
 		return closesthit
 	}
 
-	panic("apparently it wasn't a leaf or stem, so we never traversed any voxels")
+	return rayhit
 }
 
 type BrickTree struct {

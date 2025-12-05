@@ -5,6 +5,7 @@ import (
 
 	"github.com/zheskett/go-voxel/internal/engine"
 	ren "github.com/zheskett/go-voxel/internal/render"
+	"github.com/zheskett/go-voxel/internal/voxel"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
@@ -16,8 +17,8 @@ func init() {
 
 func main() {
 	// vox := vxl.VoxelsInit(256, 256, 256)
-	vox := vxl.BrickTreeInit(256, 256, 256)
-	renderDist := float32(256.0)
+	// brk := vxl.BrickTreeInit(256, 256, 256)
+	// renderDist := float32(256.0)
 	// var scene int
 	// fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, anything else for small scene\n")
 	// fmt.Scanln(&scene)
@@ -32,6 +33,11 @@ func main() {
 	// default:
 	// 	scenes.VoxelDebugSceneSmall(&vox)
 	// }
+
+	renderDist := float32(512.0)
+	size := 512
+	tree := voxel.BrickTreeInit(size, size, size)
+	tree.Insert(10, 10, 10, 0, 255, 255)
 	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()
 	cam.Movespeed = 20
@@ -45,12 +51,12 @@ func main() {
 	engine.Window = window
 	engine.Camera = cam
 	// engine.Voxels = vox
-	engine.Voxtree = vox
+	engine.Voxtree = tree
 	engine.Framedata = ren.FrameDataInit()
 	engine.SetScrollCallback()
 
-	VoxelDebugSceneSmall(&vox)
-	vox.Insert(0, 0, 10, 255, 0, 0)
+	VoxelDebugSceneSmall(&tree)
+	// brk.Insert(0, 0, 10, 255, 0, 0)
 
 	for {
 		engine.UpdateInputs()
@@ -61,8 +67,8 @@ func main() {
 
 func VoxelDebugSceneSmall(vox *vxl.BrickTree) {
 	// Make a floor and ceiling
-	for i := 1; i < 64; i++ {
-		for j := 1; j < 64; j++ {
+	for i := 1; i < 256; i++ {
+		for j := 1; j < 256; j++ {
 			vox.Insert(i, 0, j, 220, 180, 180)
 			vox.Insert(i, 40, j, 180, 180, 180)
 		}
