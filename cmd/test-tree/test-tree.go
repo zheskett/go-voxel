@@ -7,10 +7,88 @@ import (
 )
 
 func main() {
-	tree := voxel.BrickTreeInit(100, 100, 100)
-	for i := range 100 {
+	size := 16
+	tree := voxel.BrickTreeInit(size, size, size)
+	for i := range size {
 		tree.Insert(i, i, i, 0, 0, 0)
 	}
 
+	depth := maxDepth(&tree)
+	fmt.Printf("max tree depth: %d\n", depth)
+	voxels := countVoxels(&tree)
+	fmt.Printf("voxels in the tree: %d\n", voxels)
+	bricks := countBricks(&tree)
+	fmt.Printf("bricks in the tree: %d\n", bricks)
+
 	fmt.Printf("done")
+}
+
+func countBricks(br *voxel.BrickTree) int {
+	return recurCountBricks(&br.Root)
+}
+
+func recurCountBricks(node *voxel.TreeNode) int {
+	if node == nil {
+		return 0
+	}
+	if node.IsLeaf() {
+		return 1
+	}
+	bricks := 0
+	for i := range 8 {
+		bricks += recurCountBricks(node.Leaves[i])
+	}
+	return bricks
+}
+
+func countVoxels(br *voxel.BrickTree) int {
+	return recurCountVoxels(&br.Root)
+}
+
+func recurCountVoxels(node *voxel.TreeNode) int {
+	if node == nil {
+		return 0
+	}
+
+	if node.IsLeaf() {
+		count := 0
+		for i := range voxel.BrickTotal {
+			if node.Brick.Presence.Get(i) {
+				count++
+			}
+		}
+		return count
+	}
+
+	if node.IsBranch() {
+		count := 0
+		for i := range 8 {
+			count += recurCountVoxels(node.Leaves[i])
+		}
+
+		return count
+	}
+
+	return 0
+}
+
+func maxDepth(br *voxel.BrickTree) int {
+	return recurMaxDepth(&br.Root)
+}
+
+func recurMaxDepth(node *voxel.TreeNode) int {
+	if node.IsLeaf() {
+		return 0
+	}
+	if node.IsBranch() {
+		maxdepth := 0
+		for i := range 8 {
+			if node.Leaves[i] != nil {
+				depth := recurMaxDepth(node.Leaves[i])
+				maxdepth = max(maxdepth, depth)
+			}
+		}
+		return maxdepth + 1
+	}
+	return 0
 }

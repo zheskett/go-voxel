@@ -2,6 +2,7 @@
 package render
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/chewxy/math32"
@@ -113,6 +114,7 @@ func (cam *Camera) RenderVoxelsTree(vox *vxl.BrickTree, pix *Pixels) {
 
 					hit := vox.MarchRay(ray)
 					if hit.Hit {
+						fmt.Printf("we hit something")
 						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
 						shadedintensity := te.Vec3Splat(1.0)

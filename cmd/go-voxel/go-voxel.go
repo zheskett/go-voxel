@@ -5,7 +5,6 @@ import (
 
 	"github.com/zheskett/go-voxel/internal/engine"
 	ren "github.com/zheskett/go-voxel/internal/render"
-	te "github.com/zheskett/go-voxel/internal/tensor"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
@@ -39,7 +38,6 @@ func main() {
 	cam.Lookspeed = 0.005
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
-	cam.Pos = te.Vec3(16, 4, 16)
 	cam.RenderDistance = renderDist
 
 	engine := engine.Engine{}
@@ -51,7 +49,8 @@ func main() {
 	engine.Framedata = ren.FrameDataInit()
 	engine.SetScrollCallback()
 
-	voxTreeDebugScene(&vox)
+	VoxelDebugSceneSmall(&vox)
+	vox.Insert(0, 0, 10, 255, 0, 0)
 
 	for {
 		engine.UpdateInputs()
@@ -60,10 +59,46 @@ func main() {
 	}
 }
 
-func voxTreeDebugScene(vox *vxl.BrickTree) {
+func VoxelDebugSceneSmall(vox *vxl.BrickTree) {
+	// Make a floor and ceiling
+	for i := 1; i < 64; i++ {
+		for j := 1; j < 64; j++ {
+			vox.Insert(i, 0, j, 220, 180, 180)
+			vox.Insert(i, 40, j, 180, 180, 180)
+		}
+	}
+	// Make walls
 	for i := range 100 {
 		for j := range 100 {
-			vox.Insert(i, 0, j, 0, 255, 255)
+			vox.Insert(100, i, j, 200, 180, 180)
+			vox.Insert(0, i, j, 180, 220, 180)
+			vox.Insert(j, i, 0, 200, 180, 180)
+			vox.Insert(j, i, 100, 180, 180, 220)
+		}
+	}
+	// Make a small wall for shadows
+	for i := range 55 {
+		for j := range 100 {
+			vox.Insert(35, j, i, 200, 180, 180)
+			vox.Insert(36, j, i, 200, 180, 180)
+		}
+	}
+
+	for i := 60; i < 70; i++ {
+		for j := 28; j < 40; j++ {
+			for k := 60; k < 70; k++ {
+				vox.Insert(i, j, k, 200, 200, 200)
+			}
+		}
+	}
+
+	for i := range 100 {
+		for j := range 100 {
+			for k := range 100 {
+				if i%10 == 0 && j%10 == 0 && k%10 == 0 {
+					vox.Insert(i, j, k, 200, 200, 200)
+				}
+			}
 		}
 	}
 }
