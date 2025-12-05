@@ -2,7 +2,6 @@ package tensor
 
 import (
 	"github.com/chewxy/math32"
-	"github.com/zheskett/go-voxel/internal/engine"
 )
 
 // A 2D Vector
@@ -273,7 +272,3 @@ func (v Vector3) SignVec() Vector3 {
 }
 
 // End Vector3 Functions
-
-func (v Vector3) Convert(to, from engine.Basis) Vector3 {
-	return to.
-}

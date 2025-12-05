@@ -10,7 +10,240 @@ const (
 	BrickTotal int = BrickSize * BrickSize * BrickSize
 )
 
-// This is basically a slimemd down clone of the old Voxel struct.
+// An integer 3D vector
+type IVec3 struct {
+	x, y, z int
+}
+
+func IV3(x, y, z int) IVec3 {
+	return IVec3{x, y, z}
+}
+
+func (v IVec3) AsArray() [3]int {
+	return [3]int{v.x, v.y, v.z}
+}
+
+func (v1 IVec3) Add(v2 IVec3) IVec3 {
+	return IV3(v1.x+v2.x, v1.y+v2.y, v1.z+v2.z)
+}
+
+func (v1 IVec3) Sub(v2 IVec3) IVec3 {
+	return IV3(v1.x-v2.x, v1.y-v2.y, v1.z-v2.z)
+}
+
+// Axis Aligned Bounding Box
+type AABB struct {
+	Low  IVec3 // This storage method can be simplified this is just the easiest
+	High IVec3
+}
+
+func AABBInit(lx, ly, lz int, hx, hy, hz int) AABB {
+	return AABB{Low: IV3(lx, ly, lz), High: IV3(hx, hy, hz)}
+}
+
+func (box *AABB) Size() IVec3 {
+	return box.High.Sub(box.Low)
+}
+
+// Returns if a point is fully encased by the box. The convention we are using is [min, max)
+func (box *AABB) Surrounds(v IVec3) bool {
+	return v.x >= box.Low.x && v.y >= box.Low.y && v.z >= box.Low.z &&
+		v.x < box.High.x && v.y < box.High.y && v.z < box.High.z
+}
+
+// Slab-method of AABB and ray intersection
+func (box *AABB) RayIntersection(ray Ray) (float32, float32) {
+	tmin := float32(0.0)
+	tmax := ray.Tmax
+	dirs := ray.Dir.AsArray()
+	orig := ray.Origin.AsArray()
+	low := box.Low.AsArray()
+	high := box.High.AsArray()
+	for i := range 3 {
+		if dirs[i] != 0.0 {
+			invd := 1.0 / dirs[i]
+			t0 := (float32(low[i]) - orig[i]) * invd
+			t1 := (float32(high[i]) - orig[i]) * invd
+
+			if invd < 0.0 {
+				t0, t1 = t1, t0
+			}
+			if t0 > tmin {
+				tmin = t0
+			}
+			if t1 < tmax {
+				tmax = t1
+			}
+			if tmax < tmin {
+				return 1, 0 // There isn't an intersection
+			}
+		}
+	}
+
+	return tmin, tmax
+}
+
+func (box *AABB) Subdivide() [8]AABB {
+	low, high := box.Low.AsArray(), box.High.AsArray()
+	lx, ly, lz := low[0], low[1], low[2]
+	hx, hy, hz := high[0], high[1], high[2]
+	mx, my, mz := lx+(high[0]-low[0])/2, ly+(high[1]-low[1])/2, lz+(high[2]-low[2])/2
+
+	return [8]AABB{
+		AABBInit(lx, ly, lz, mx, my, mz),
+		AABBInit(mx, ly, lz, hx, my, mz),
+		AABBInit(lx, my, lz, mx, hy, mz),
+		AABBInit(lx, ly, mz, mx, my, hz),
+		AABBInit(mx, my, mz, hx, hy, hz),
+		AABBInit(mx, my, lz, hx, hy, mz),
+		AABBInit(lx, my, mz, mx, hy, hz),
+		AABBInit(mx, ly, mz, hx, my, hz),
+	}
+}
+
+type TreeNode struct {
+	Box    AABB
+	Brick  *Brick
+	Leaves [8]*TreeNode
+}
+
+func TreeNodeInit(box AABB) TreeNode {
+	return TreeNode{box, nil, [8]*TreeNode{}}
+}
+
+func (node *TreeNode) IsBranch() bool {
+	return node.Brick == nil && node.Leaves[0] != nil
+}
+
+func (node *TreeNode) IsLeaf() bool {
+	return node.Brick != nil
+}
+
+func (node *TreeNode) recursiveInsert(x, y, z int, r, g, b byte) bool {
+	pos := IV3(x, y, z)
+
+	// Point isn't in the tree
+	if !node.Box.Surrounds(pos) {
+		return false
+	}
+	// We already have a brick, so just put the voxel in it
+	if node.IsLeaf() {
+		localpos := pos.Sub(node.Box.Low)
+		node.Brick.SetVoxel(localpos.x, localpos.y, localpos.z, r, g, b)
+		return true
+	}
+
+	boxsize := node.Box.Size()
+	// There is no brick, but one can be directly created
+	if boxsize.x == BrickSize && boxsize.y == BrickSize && boxsize.z == BrickSize {
+		brick := BrickInit()
+		node.Brick = &brick
+		localpos := pos.Sub(node.Box.Low)
+		node.Brick.SetVoxel(localpos.x, localpos.y, localpos.z, r, g, b)
+		return true
+	}
+
+	// Otherwise, we need to split apart into bricks
+	node.Subdivide()
+	for i := range 8 {
+		if node.Leaves[i].recursiveInsert(x, y, z, r, g, b) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (node *TreeNode) Subdivide() {
+	parts := node.Box.Subdivide()
+	for i := range 8 {
+		child := TreeNodeInit(parts[i])
+		node.Leaves[i] = &child
+	}
+}
+
+func (node *TreeNode) MarchRay(ray Ray) RayHit {
+	rayhit := RayHit{Hit: false}
+
+	tmin, tmax := node.Box.RayIntersection(ray)
+	if tmax < tmin || tmin > ray.Tmax {
+		return rayhit // Never hits the bounding box
+	}
+
+	if node.IsLeaf() {
+		// If we do hit the bounding box, shift the ray origin right next to it and
+		// traverse the brick just like we would with the dense voxel storage
+		localorigin := ray.Origin.Sub(tensor.Vec3(float32(node.Box.Low.x), float32(node.Box.Low.y), float32(node.Box.Low.z)))
+
+		localray := Ray{
+			Origin: localorigin,
+			Dir:    ray.Dir,
+			Tmax:   ray.Tmax - tmin,
+		}
+
+		hit := node.Brick.MarchRay(localray)
+		if hit.Hit {
+			hit.Time += tmin
+			hit.Position = ray.Origin.Add(ray.Dir.Mul(hit.Time))
+
+			hit.IntPos[0] += node.Box.Low.x
+			hit.IntPos[1] += node.Box.Low.y
+			hit.IntPos[2] += node.Box.Low.z
+		}
+		return hit
+	}
+
+	// If it is a branch, recursively dive into each leaf
+	// This can be heavily optimized with some bitmasking trick instead of checking
+	// all 8 leaves, but I don't understand how to do that optimization yet
+	//
+	// Basically, this always has to check all 8 leaves while one average it should
+	// only take 4 checks to find a hit
+	if node.IsBranch() {
+		closesthit := RayHit{Hit: false}
+		closesttime := ray.Tmax
+
+		for i := range 8 {
+			if node.Leaves[i] != nil {
+				hit := node.Leaves[i].MarchRay(ray)
+				if hit.Hit && hit.Time < closesttime {
+					closesthit = hit
+					closesttime = hit.Time
+				}
+			}
+		}
+
+		return closesthit
+	}
+
+	return rayhit
+}
+
+type BrickTree struct {
+	Root TreeNode
+}
+
+func BrickTreeInit(x, y, z int) BrickTree {
+	// This is just for now, becuase I can't even get it to work with a self-similar one
+	if x%BrickSize != 0 || y%BrickSize != 0 || z%BrickSize != 0 {
+		panic("Current tree must be multiples of 64 until it is working properly")
+	}
+
+	// 	Currently, the whole tree is 'lopsided' to one side and not centered around zero
+	// to allow for direct translation from the array storage without coordinate system
+	// transformations
+	return BrickTree{TreeNodeInit(AABBInit(0, 0, 0, x, y, z))}
+}
+
+func (bt *BrickTree) Insert(x, y, z int, r, g, b byte) {
+	bt.Root.recursiveInsert(x, y, z, r, g, b)
+}
+
+func (bt *BrickTree) MarchRay(ray Ray) RayHit {
+	return bt.Root.MarchRay(ray)
+}
+
+// This is basically a slimmed down clone of the old Voxel struct.
 //
 // The idea for this tree works kind of the way that minecraft stores chunks,
 // but using a tree for faster traversal
@@ -43,76 +276,6 @@ func (brk *Brick) Index(x, y, z int) int {
 
 func (brk *Brick) Surrounds(x, y, z int) bool {
 	return x < BrickSize && y < BrickSize && z < BrickSize && x >= 0 && y >= 0 && z >= 0
-}
-
-type AABB struct {
-	Low  [3]int
-	High [3]int
-}
-
-func AABBInit(lx, ly, lz int, hx, hy, hz int) AABB {
-	return AABB{Low: [3]int{lx, ly, lz}, High: [3]int{hx, hy, hz}}
-}
-
-// Slab-method of AABB and ray intersection
-func (bb *AABB) RayIntersection(ray Ray) (float32, float32) {
-	tmin := float32(0.0)
-	tmax := ray.Tmax
-	dirs := ray.Dir.AsArray()
-	orig := ray.Origin.AsArray()
-	for i := range 3 {
-		if dirs[i] != 0.0 {
-			invd := 1.0 / dirs[i]
-			t0 := (float32(bb.Low[i]) - orig[i]) * invd
-			t1 := (float32(bb.High[i]) - orig[i]) * invd
-
-			if invd < 0.0 {
-				t0, t1 = t1, t0
-			}
-			if t0 > tmin {
-				tmin = t0
-			}
-			if t1 < tmax {
-				tmax = t1
-			}
-			if tmax < tmin {
-				return 1, 0 // There isn't an intersection
-			}
-		}
-	}
-
-	return tmin, tmax
-}
-
-func (bb *AABB) Subdivide() [8]AABB {
-	lx, ly, lz := bb.Low[0], bb.Low[1], bb.Low[2]
-	hx, hy, hz := bb.High[0], bb.High[1], bb.High[2]
-	mx, my, mz := lx+(bb.High[0]-bb.Low[0])/2, ly+(bb.High[1]-bb.Low[1])/2, lz+(bb.High[2]-bb.Low[2])/2
-
-	return [8]AABB{
-		AABBInit(lx, ly, lz, mx, my, mz),
-		AABBInit(mx, ly, lz, hx, my, mz),
-		AABBInit(lx, my, lz, mx, hy, mz),
-		AABBInit(lx, ly, mz, mx, my, hz),
-		AABBInit(mx, my, mz, hx, hy, hz),
-		AABBInit(mx, my, lz, hx, hy, mz),
-		AABBInit(lx, my, mz, mx, hy, hz),
-		AABBInit(mx, ly, mz, hx, my, hz),
-	}
-}
-
-type TreeNode struct {
-	Box    AABB
-	Brick  *Brick
-	Leaves [8]*TreeNode
-}
-
-func (node *TreeNode) IsLeaf() bool {
-	return node.Brick != nil
-}
-
-type BrickTree struct {
-	Root TreeNode
 }
 
 // Can repurpose this exact same function for traversing a single brick, once we go
@@ -232,9 +395,4 @@ func (brk *Brick) MarchRay(ray Ray) RayHit {
 	}
 
 	return rayhit
-}
-
-// Just used to silence the gopls errors
-func ErrorSilent[T any](v T, a ...T) {
-
 }

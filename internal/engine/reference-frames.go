@@ -19,6 +19,10 @@ const (
 // 	VoxelFrame ReferenceFrame = ReferenceFrame{
 // 		...
 // 	}
+// 	CameraFrame ReferenceFrame = RefernceFrame {
+// 		...
+// 	}
+// 	...
 // )
 
 type ReferenceFrame struct {

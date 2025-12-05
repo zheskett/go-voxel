@@ -13,24 +13,26 @@ const (
 )
 
 type Engine struct {
-	Renderer  *render.RenderManager
-	Window    *glfw.Window
-	Camera    render.Camera
-	Voxels    voxel.Voxels
+	Renderer *render.RenderManager
+	Window   *glfw.Window
+	Camera   render.Camera
+	// Voxels    voxel.Voxels
 	Framedata render.FrameData
+
+	Voxtree voxel.BrickTree
 }
 
 func (eng *Engine) UpdateInputs() {
 	eng.Framedata.Update()
 	eng.Framedata.ReportFps()
-	// render.UpdateCamInputGLFW(&eng.Camera, eng.Window, &eng.Framedata)
 	render.UpdateCamInputGLFWFPS(&eng.Camera, eng.Window, &eng.Framedata)
-	eng.Voxels.UpdateInputs(eng.Window, eng.Camera.Pos, eng.Camera.Fvec)
+	// eng.Voxels.UpdateInputs(eng.Window, eng.Camera.Pos, eng.Camera.Fvec)
 }
 
 func (eng *Engine) UpdateRender() {
 	eng.Renderer.Pixels.FillPixels(render.BackgroundRed, render.BackgroundGreen, render.BackgroundBlue)
-	eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Pixels)
+	// eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Pixels)
+	eng.Camera.RenderVoxelsTree(&eng.Voxtree, &eng.Renderer.Pixels)
 	eng.Renderer.Render(eng.Window)
 }
 

@@ -1,12 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/zheskett/go-voxel/internal/engine"
 	ren "github.com/zheskett/go-voxel/internal/render"
-	"github.com/zheskett/go-voxel/internal/scenes"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
@@ -18,22 +16,23 @@ func init() {
 }
 
 func main() {
-	vox := vxl.VoxelsInit(256, 256, 256)
+	// vox := vxl.VoxelsInit(256, 256, 256)
+	vox := vxl.BrickTreeInit(256, 256, 256)
 	renderDist := float32(256.0)
-	var scene int
-	fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, anything else for small scene\n")
-	fmt.Scanln(&scene)
-	switch scene {
-	case 1:
-		scenes.VoxelDebugSceneBig(&vox)
-	case 2:
-		scenes.VoxelDebugEmptyScene(&vox)
-	case 3:
-		scenes.VoxelDebugSceneHugeBunny(&vox)
-		renderDist = 560.0
-	default:
-		scenes.VoxelDebugSceneSmall(&vox)
-	}
+	// var scene int
+	// fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, anything else for small scene\n")
+	// fmt.Scanln(&scene)
+	// switch scene {
+	// case 1:
+	// 	scenes.VoxelDebugSceneBig(&vox)
+	// case 2:
+	// 	scenes.VoxelDebugEmptyScene(&vox)
+	// case 3:
+	// 	scenes.VoxelDebugSceneHugeBunny(&vox)
+	// 	renderDist = 560.0
+	// default:
+	// 	scenes.VoxelDebugSceneSmall(&vox)
+	// }
 	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()
 	cam.Movespeed = 20
@@ -47,13 +46,24 @@ func main() {
 	engine.Renderer = rm
 	engine.Window = window
 	engine.Camera = cam
-	engine.Voxels = vox
+	// engine.Voxels = vox
+	engine.Voxtree = vox
 	engine.Framedata = ren.FrameDataInit()
 	engine.SetScrollCallback()
+
+	voxTreeDebugScene(&vox)
 
 	for {
 		engine.UpdateInputs()
 		engine.UpdateRender()
 		engine.CheckExit()
+	}
+}
+
+func voxTreeDebugScene(vox *vxl.BrickTree) {
+	for i := range 100 {
+		for j := range 100 {
+			vox.Insert(i, 0, j, 0, 255, 255)
+		}
 	}
 }
