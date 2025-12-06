@@ -132,6 +132,21 @@ func (v Vector2) SignVec() Vector2 {
 	return Vector2{math32.Copysign(1, v.X), math32.Copysign(1, v.Y)}
 }
 
+// Returns the max component of a 2D vector
+func (v Vector2) Max() float32 {
+	return max(v.X, v.Y)
+}
+
+// Returns the min component of a 2D vector
+func (v Vector2) Min() float32 {
+	return min(v.X, v.Y)
+}
+
+// Returns the absolute value of a 2D vector
+func (v Vector2) Abs() Vector2 {
+	return Vector2{math32.Abs(v.X), math32.Abs(v.Y)}
+}
+
 // End Vector2 Functions
 
 // Start Vector3 Functions
@@ -259,6 +274,21 @@ func (v Vector3) ComponentClamp(min, max float32) Vector3 {
 // Returns a vector with -1 or +1 corresponding to the sign of each component
 func (v Vector3) SignVec() Vector3 {
 	return Vector3{math32.Copysign(1, v.X), math32.Copysign(1, v.Y), math32.Copysign(1, v.Z)}
+}
+
+// Returns the max component of a 3D vector
+func (v Vector3) Max() float32 {
+	return max(v.X, v.Y, v.Z)
+}
+
+// Returns the min component of a 3D vector
+func (v Vector3) Min() float32 {
+	return min(v.X, v.Y, v.Z)
+}
+
+// Returns the absolute value of a 3D vector
+func (v Vector3) Abs() Vector3 {
+	return Vector3{math32.Abs(v.X), math32.Abs(v.Y), math32.Abs(v.Z)}
 }
 
 // End Vector3 Functions
