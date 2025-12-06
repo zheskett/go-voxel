@@ -38,18 +38,16 @@ func VoxelDebugEmptyScene(vox *vxl.Voxels) {
 			vox.SetVoxel(j, i, vox.Z-1, 200, 200, 200)
 		}
 	}
-	obj, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T26, 200, [3]byte{220, 220, 220})
+	obj, err := vxl.VoxelizePath("assets/bunny.obj", false, true, false, vxl.T26, 100, [3]byte{220, 220, 220})
 	if err != nil {
 		panic(err)
 	}
-	obj.Flip(false, true, false)
-	vox.AddVoxelObj(obj, vox.X-120, 10, vox.Z-120)
-	cow, err := vxl.VoxelizePath("assets/cow.obj", vxl.T6, 165, [3]byte{160, 82, 45})
+	vox.AddVoxelObj(obj, vox.X-120, 0, vox.Z-120)
+	cow, err := vxl.VoxelizePath("assets/cow.obj", false, true, false, vxl.T6, 160, [3]byte{160, 82, 45})
 	if err != nil {
 		panic(err)
 	}
-	cow.Flip(false, true, false)
-	vox.AddVoxelObj(cow, vox.X/4-35, 10, vox.Z/4-35)
+	vox.AddVoxelObj(cow, vox.X/4-35, 0, vox.Z/4-35)
 }
 
 // A small room with 3 colored lights and boxes everywhere
@@ -220,12 +218,10 @@ func VoxelDebugSceneHugeBunny(vox *vxl.Voxels) {
 	vox.Lights = append(vox.Lights, light, light2, light3, light4)
 
 	// Bunny
-	bunny, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T26, 1230, [3]byte{255, 255, 255})
+	bunny, err := vxl.VoxelizePath("assets/bunny.obj", false, true, false, vxl.T26, 512, [3]byte{255, 255, 255})
 	if err != nil {
 		panic(err)
 	}
 
-	bunny.Flip(false, true, false)
-	println(bunny.X, bunny.Y, bunny.Z)
 	vox.AddVoxelObj(bunny, 0, 0, 0)
 }

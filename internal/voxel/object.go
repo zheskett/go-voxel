@@ -27,8 +27,10 @@ const (
 )
 
 // Same as Voxelize(ParseObj(path), ...) basically
-func VoxelizePath(path string, cd ConnectivityDistance, resolution int, color [3]byte) (VoxelObj, error) {
-	obj, err := parser.ParseObj(path)
+func VoxelizePath(path string, flipX, flipY, flipZ bool, cd ConnectivityDistance,
+	resolution int, color [3]byte) (VoxelObj, error) {
+
+	obj, err := parser.ParseObj(path, flipX, flipY, flipZ)
 	if err != nil {
 		return VoxelObj{}, err
 	}
