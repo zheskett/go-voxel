@@ -16,28 +16,9 @@ func init() {
 }
 
 func main() {
-	// vox := vxl.VoxelsInit(256, 256, 256)
-	// brk := vxl.BrickTreeInit(256, 256, 256)
-	// renderDist := float32(256.0)
-	// var scene int
-	// fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, anything else for small scene\n")
-	// fmt.Scanln(&scene)
-	// switch scene {
-	// case 1:
-	// 	scenes.VoxelDebugSceneBig(&vox)
-	// case 2:
-	// 	scenes.VoxelDebugEmptyScene(&vox)
-	// case 3:
-	// 	scenes.VoxelDebugSceneHugeBunny(&vox)
-	// 	renderDist = 560.0
-	// default:
-	// 	scenes.VoxelDebugSceneSmall(&vox)
-	// }
-
-	renderDist := float32(512.0)
-	size := 512
+	renderDist := float32(256.0)
+	size := 256
 	tree := voxel.BrickTreeInit(size, size, size)
-	tree.Insert(10, 10, 10, 0, 255, 255)
 	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()
 	cam.Movespeed = 20
@@ -50,13 +31,12 @@ func main() {
 	engine.Renderer = rm
 	engine.Window = window
 	engine.Camera = cam
-	// engine.Voxels = vox
 	engine.Voxtree = tree
 	engine.Framedata = ren.FrameDataInit()
 	engine.SetScrollCallback()
 
-	VoxelDebugSceneSmall(&tree)
-	// brk.Insert(0, 0, 10, 255, 0, 0)
+	VoxelDebugSceneSmall(&engine.Voxtree)
+	VoxelDebugEmptyScene(&engine.Voxtree)
 
 	for {
 		engine.UpdateInputs()
@@ -105,6 +85,21 @@ func VoxelDebugSceneSmall(vox *vxl.BrickTree) {
 					vox.Insert(i, j, k, 200, 200, 200)
 				}
 			}
+		}
+	}
+}
+
+func VoxelDebugEmptyScene(vox *vxl.BrickTree) {
+	for i := range 256 {
+		for j := range 256 {
+			// Floor and ceiling
+			vox.Insert(i, 0, j, 200, 200, 200)
+			vox.Insert(i, 100, j, 200, 200, 200)
+			// Walls
+			vox.Insert(0, i, j, 200, 200, 200)
+			vox.Insert(256, i, j, 200, 200, 200)
+			vox.Insert(j, i, 0, 200, 200, 200)
+			vox.Insert(j, i, 256, 200, 200, 200)
 		}
 	}
 }

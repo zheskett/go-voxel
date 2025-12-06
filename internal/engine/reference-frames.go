@@ -1,6 +1,8 @@
 package engine
 
-import "github.com/zheskett/go-voxel/internal/tensor"
+import (
+	"github.com/zheskett/go-voxel/internal/tensor"
+)
 
 type refframe uint8
 
@@ -53,6 +55,10 @@ type Basis interface {
 
 // The global reference frame is exactly what you would expect
 func (engine *Engine) BasisFrame() ReferenceFrame {
+	return globalFrame()
+}
+
+func globalFrame() ReferenceFrame {
 	return ReferenceFrame{tensor.Vec3X(), tensor.Vec3Y(), tensor.Vec3Z(), tensor.Vec3Zero()}
 }
 
@@ -60,7 +66,7 @@ func (engine *Engine) BasisFrame() ReferenceFrame {
 // make const structs in Go. So, in order to change between frames you need to have
 // a type that implements Basis in scope
 //
-// This is the only function that should be public
+// Allows a vector from any frame to be converted to any other frame
 func Convert(v tensor.Vector3, from Basis, to Basis) tensor.Vector3 {
 	fromframe := from.BasisFrame()
 	toframe := to.BasisFrame()
@@ -69,4 +75,10 @@ func Convert(v tensor.Vector3, from Basis, to Basis) tensor.Vector3 {
 	dest := toframe.fromGlobal(glob)
 
 	return dest
+}
+
+// Returns the local representation of a vector on any type that implements
+// Basis from the global coordinate system
+func InLocal(v tensor.Vector3, local Basis) tensor.Vector3 {
+	return local.BasisFrame().fromGlobal(v)
 }

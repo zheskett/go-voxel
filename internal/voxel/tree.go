@@ -1,58 +1,58 @@
 package voxel
 
 import (
-	"github.com/chewxy/math32"
 	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
+// This should later be changed to 4^3 so that we can fit in a single u64
 const (
 	BrickSize  int = 8
 	BrickTotal int = BrickSize * BrickSize * BrickSize
 )
 
 // An integer 3D vector
-type IVec3 struct {
-	x, y, z int
+type Vec3i struct {
+	X, Y, Z int
 }
 
-func IV3(x, y, z int) IVec3 {
-	return IVec3{x, y, z}
+func Vec3(x, y, z int) Vec3i {
+	return Vec3i{x, y, z}
 }
 
-func (v IVec3) AsArray() [3]int {
-	return [3]int{v.x, v.y, v.z}
+func (v Vec3i) AsArray() [3]int {
+	return [3]int{v.X, v.Y, v.Z}
 }
 
-func (v1 IVec3) Add(v2 IVec3) IVec3 {
-	return IV3(v1.x+v2.x, v1.y+v2.y, v1.z+v2.z)
+func (v1 Vec3i) Add(v2 Vec3i) Vec3i {
+	return Vec3(v1.X+v2.X, v1.Y+v2.Y, v1.Z+v2.Z)
 }
 
-func (v1 IVec3) Sub(v2 IVec3) IVec3 {
-	return IV3(v1.x-v2.x, v1.y-v2.y, v1.z-v2.z)
+func (v1 Vec3i) Sub(v2 Vec3i) Vec3i {
+	return Vec3(v1.X-v2.X, v1.Y-v2.Y, v1.Z-v2.Z)
 }
 
 // Axis Aligned Bounding Box
-type AABB struct {
-	Low  IVec3 // This storage method can be simplified this is just the easiest
-	High IVec3
+type Box struct {
+	Low  Vec3i // This storage method can be simplified this is just the easiest
+	High Vec3i
 }
 
-func AABBInit(lx, ly, lz int, hx, hy, hz int) AABB {
-	return AABB{Low: IV3(lx, ly, lz), High: IV3(hx, hy, hz)}
+func BoxInit(lx, ly, lz int, hx, hy, hz int) Box {
+	return Box{Low: Vec3(lx, ly, lz), High: Vec3(hx, hy, hz)}
 }
 
-func (box *AABB) Size() IVec3 {
+func (box *Box) Size() Vec3i {
 	return box.High.Sub(box.Low)
 }
 
 // Returns if a point is fully encased by the box. The convention we are using is [min, max)
-func (box *AABB) Surrounds(v IVec3) bool {
-	return v.x >= box.Low.x && v.y >= box.Low.y && v.z >= box.Low.z &&
-		v.x < box.High.x && v.y < box.High.y && v.z < box.High.z
+func (box *Box) Surrounds(v Vec3i) bool {
+	return v.X >= box.Low.X && v.Y >= box.Low.Y && v.Z >= box.Low.Z &&
+		v.X < box.High.X && v.Y < box.High.Y && v.Z < box.High.Z
 }
 
 // Slab-method of AABB and ray intersection
-func (box *AABB) RayIntersection(ray Ray) (float32, float32) {
+func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 	tmin := float32(0.0)
 	tmax := ray.Tmax
 	dirs := ray.Dir.AsArray()
@@ -88,32 +88,41 @@ func (box *AABB) RayIntersection(ray Ray) (float32, float32) {
 	return tmin, tmax
 }
 
-func (box *AABB) Subdivide() [8]AABB {
+func (box *Box) Subdivide() [8]Box {
 	low, high := box.Low.AsArray(), box.High.AsArray()
 	lx, ly, lz := low[0], low[1], low[2]
 	hx, hy, hz := high[0], high[1], high[2]
 	mx, my, mz := (high[0]+low[0])/2, (high[1]+low[1])/2, (high[2]+low[2])/2
 
-	return [8]AABB{
-		AABBInit(lx, ly, lz, mx, my, mz),
-		AABBInit(mx, ly, lz, hx, my, mz),
-		AABBInit(lx, my, lz, mx, hy, mz),
-		AABBInit(lx, ly, mz, mx, my, hz),
-		AABBInit(mx, my, mz, hx, hy, hz),
-		AABBInit(mx, my, lz, hx, hy, mz),
-		AABBInit(lx, my, mz, mx, hy, hz),
-		AABBInit(mx, ly, mz, hx, my, hz),
+	return [8]Box{
+		BoxInit(lx, ly, lz, mx, my, mz),
+		BoxInit(mx, ly, lz, hx, my, mz),
+		BoxInit(lx, my, lz, mx, hy, mz),
+		BoxInit(lx, ly, mz, mx, my, hz),
+		BoxInit(mx, my, mz, hx, hy, hz),
+		BoxInit(mx, my, lz, hx, hy, mz),
+		BoxInit(lx, my, mz, mx, hy, hz),
+		BoxInit(mx, ly, mz, hx, my, hz),
 	}
 }
 
+func CanBrick(box *Box) bool {
+	size := box.Size()
+	return size.X == BrickSize && size.Y == BrickSize && size.Z == BrickSize
+}
+
 type TreeNode struct {
-	Box    AABB
+	Box    Box
 	Brick  *Brick
 	Leaves [8]*TreeNode
 }
 
-func TreeNodeInit(box AABB) TreeNode {
+func TreeNodeInit(box Box) TreeNode {
 	return TreeNode{box, nil, [8]*TreeNode{}}
+}
+
+func (node *TreeNode) IsEmtpy() bool {
+	return node.Brick == nil
 }
 
 func (node *TreeNode) IsBranch() bool {
@@ -124,12 +133,8 @@ func (node *TreeNode) IsLeaf() bool {
 	return !node.IsEmtpy() && node.Leaves[0] == nil
 }
 
-func (node *TreeNode) IsEmtpy() bool {
-	return node.Brick == nil
-}
-
-func (node *TreeNode) recursiveInsert(x, y, z int, r, g, b byte) bool {
-	pos := IV3(x, y, z)
+func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
+	pos := Vec3(x, y, z)
 
 	// Point isn't in the tree
 	if !node.Box.Surrounds(pos) {
@@ -141,12 +146,10 @@ func (node *TreeNode) recursiveInsert(x, y, z int, r, g, b byte) bool {
 		return true
 	}
 
-	boxsize := node.Box.Size()
 	// There is no brick, but one can be directly created
-	if node.IsEmtpy() && boxsize.x == BrickSize && boxsize.y == BrickSize && boxsize.z == BrickSize {
+	if node.IsEmtpy() && CanBrick(&node.Box) {
 		brick := BrickInit()
 		node.Brick = &brick
-
 		node.insertLocalBrick(pos, r, g, b)
 		return true
 	}
@@ -157,7 +160,7 @@ func (node *TreeNode) recursiveInsert(x, y, z int, r, g, b byte) bool {
 	}
 
 	for i := range 8 {
-		if node.Leaves[i].recursiveInsert(x, y, z, r, g, b) {
+		if node.Leaves[i].RecursiveInsert(x, y, z, r, g, b) {
 			return true
 		}
 	}
@@ -165,9 +168,9 @@ func (node *TreeNode) recursiveInsert(x, y, z int, r, g, b byte) bool {
 	return false
 }
 
-func (node *TreeNode) insertLocalBrick(pos IVec3, r byte, g byte, b byte) {
+func (node *TreeNode) insertLocalBrick(pos Vec3i, r byte, g byte, b byte) {
 	localpos := pos.Sub(node.Box.Low)
-	node.Brick.SetVoxel(localpos.x, localpos.y, localpos.z, r, g, b)
+	node.Brick.SetVoxel(localpos.X, localpos.Y, localpos.Z, r, g, b)
 }
 
 func (node *TreeNode) Subdivide() {
@@ -189,9 +192,9 @@ func (node *TreeNode) MarchRay(ray Ray) RayHit {
 	if node.IsLeaf() {
 		originatentry := ray.Origin.Add(ray.Dir.Mul(tmin))
 		localorigin := originatentry.Sub(tensor.Vec3(
-			float32(node.Box.Low.x),
-			float32(node.Box.Low.y),
-			float32(node.Box.Low.z),
+			float32(node.Box.Low.X),
+			float32(node.Box.Low.Y),
+			float32(node.Box.Low.Z),
 		))
 
 		brickray := Ray{
@@ -204,9 +207,9 @@ func (node *TreeNode) MarchRay(ray Ray) RayHit {
 		if hit.Hit {
 			hit.Time += tmin
 			hit.Position = ray.Origin.Add(ray.Dir.Mul(hit.Time))
-			hit.IntPos[0] += node.Box.Low.x
-			hit.IntPos[1] += node.Box.Low.y
-			hit.IntPos[2] += node.Box.Low.z
+			hit.IntPos[0] += node.Box.Low.X
+			hit.IntPos[1] += node.Box.Low.Y
+			hit.IntPos[2] += node.Box.Low.Z
 			return hit
 		}
 	}
@@ -244,17 +247,17 @@ type BrickTree struct {
 func BrickTreeInit(x, y, z int) BrickTree {
 	// This is just for now, becuase I can't even get it to work with a self-similar one
 	if x%BrickSize != 0 || y%BrickSize != 0 || z%BrickSize != 0 {
-		panic("Current tree must be multiples of 64 until it is working properly")
+		panic("Current tree must be multiples of 8 until it is working properly")
 	}
 
-	// 	Currently, the whole tree is 'lopsided' to one side and not centered around zero
+	// Currently, the whole tree is 'lopsided' to one side and not centered around zero
 	// to allow for direct translation from the array storage without coordinate system
 	// transformations
-	return BrickTree{TreeNodeInit(AABBInit(0, 0, 0, x, y, z))}
+	return BrickTree{TreeNodeInit(BoxInit(0, 0, 0, x, y, z))}
 }
 
-func (bt *BrickTree) Insert(x, y, z int, r, g, b byte) {
-	bt.Root.recursiveInsert(x, y, z, r, g, b)
+func (bt *BrickTree) Insert(x, y, z int, r, g, b byte) bool {
+	return bt.Root.RecursiveInsert(x, y, z, r, g, b)
 }
 
 func (bt *BrickTree) MarchRay(ray Ray) RayHit {
@@ -300,84 +303,28 @@ func (brk *Brick) Surrounds(x, y, z int) bool {
 // through the tree and determine that the leaf has voxels present
 func (brk *Brick) MarchRay(ray Ray) RayHit {
 	rayhit := RayHit{Hit: false}
-	origin, direc, tmax := ray.Origin, ray.Dir, ray.Tmax
 
-	ox, oy, oz := origin.Elms()
-	dx, dy, dz := direc.Elms()
+	march := MarchDataInit(ray)
 
-	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))
-	adx, ady, adz := math32.Abs(dx), math32.Abs(dy), math32.Abs(dz)
-	fractx, fracty, fractz := ox-float32(x), oy-float32(y), oz-float32(z)
-
-	var stepx, stepy, stepz int
-	var invx, invy, invz float32
-	var timex, timey, timez float32
-
-	inf := math32.Inf(1)
-	if adx < 1e-9 {
-		stepx = 0
-		invx = inf
-		timex = inf
-	} else {
-		invx = 1.0 / adx
-		if dx > 0 {
-			stepx = 1
-			timex = invx * (1.0 - fractx)
-		} else {
-			stepx = -1
-			timex = invx * fractx
-		}
-	}
-	if ady < 1e-9 {
-		stepy = 0
-		invy = inf
-		timey = inf
-	} else {
-		invy = 1.0 / ady
-		if dy > 0 {
-			stepy = 1
-			timey = invy * (1.0 - fracty)
-		} else {
-			stepy = -1
-			timey = invy * fracty
-		}
-	}
-	if adz < 1e-9 {
-		stepz = 0
-		invz = inf
-		timez = inf
-	} else {
-		invz = 1.0 / adz
-		if dz > 0 {
-			stepz = 1
-			timez = invz * (1.0 - fractz)
-		} else {
-			stepz = -1
-			timez = invz * fractz
-		}
-	}
-
-	side := none
-	time := float32(0.0)
 	for {
-		if time > tmax {
+		if march.Time > ray.Tmax {
 			break
 		}
-		if brk.Surrounds(x, y, z) {
-			idx := brk.Index(x, y, z)
+		if brk.Surrounds(march.Pos.X, march.Pos.Y, march.Pos.Z) {
+			idx := brk.Index(march.Pos.X, march.Pos.Y, march.Pos.Z)
 			if brk.Presence.Get(idx) {
 				rayhit.Hit = true
-				rayhit.Time = time
-				rayhit.IntPos = [3]int{x, y, z}
-				rayhit.Position = ray.Origin.Add(ray.Dir.Mul(time))
+				rayhit.Time = march.Time
+				rayhit.IntPos = [3]int{march.Pos.X, march.Pos.Y, march.Pos.Z}
+				rayhit.Position = ray.Origin.Add(ray.Dir.Mul(march.Time))
 				rayhit.Color = brk.Color[idx]
-				switch side {
+				switch march.Side {
 				case axisX:
-					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(-float32(stepx))
+					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(-float32(march.Step.X))
 				case axisY:
-					rayhit.Normal = tensor.Vec3(0, 1, 0).Mul(-float32(stepy))
+					rayhit.Normal = tensor.Vec3(0, 1, 0).Mul(-float32(march.Step.Y))
 				case axisZ:
-					rayhit.Normal = tensor.Vec3(0, 0, 1).Mul(-float32(stepz))
+					rayhit.Normal = tensor.Vec3(0, 0, 1).Mul(-float32(march.Step.Z))
 				default:
 					rayhit.Normal = tensor.Vec3(0, 0, 0)
 				}
@@ -385,29 +332,29 @@ func (brk *Brick) MarchRay(ray Ray) RayHit {
 			}
 		}
 
-		if timex < timey {
-			if timex < timez {
-				x += stepx
-				time = timex
-				timex += invx
-				side = axisX
+		if march.Timev.X < march.Timev.Y {
+			if march.Timev.X < march.Timev.Z {
+				march.Pos.X += march.Step.X
+				march.Time = march.Timev.X
+				march.Timev.X += march.Inv.X
+				march.Side = axisX
 			} else {
-				z += stepz
-				time = timez
-				timez += invz
-				side = axisZ
+				march.Pos.Z += march.Step.Z
+				march.Time = march.Timev.Z
+				march.Timev.Z += march.Inv.Z
+				march.Side = axisZ
 			}
 		} else {
-			if timey < timez {
-				y += stepy
-				time = timey
-				timey += invy
-				side = axisY
+			if march.Timev.Y < march.Timev.Z {
+				march.Pos.Y += march.Step.Y
+				march.Time = march.Timev.Y
+				march.Timev.Y += march.Inv.Y
+				march.Side = axisY
 			} else {
-				z += stepz
-				time = timez
-				timez += invz
-				side = axisZ
+				march.Pos.Z += march.Step.Z
+				march.Time = march.Timev.Z
+				march.Timev.Z += march.Inv.Z
+				march.Side = axisZ
 			}
 		}
 	}

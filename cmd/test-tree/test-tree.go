@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	size := 16
+	size := 128
 	tree := voxel.BrickTreeInit(size, size, size)
 	if tree.Root.Brick != nil {
 		panic("what??")
@@ -24,23 +24,25 @@ func main() {
 	}
 
 	for i := range size {
-		tree.Insert(i, i, i, 0, 0, 0)
+		if !tree.Insert(i, i, i, 0, 0, 0) {
+			panic("error inserting into tree")
+		}
 	}
 
 	depth := maxDepth(&tree)
-	fmt.Printf("max tree depth: %d\n", depth)
 	voxels := countVoxels(&tree)
-	fmt.Printf("voxels in the tree: %d\n", voxels)
 	bricks := countBricks(&tree)
+	fmt.Printf("max tree depth: %d\n", depth)
+	fmt.Printf("voxels in the tree: %d\n", voxels)
 	fmt.Printf("bricks in the tree: %d\n", bricks)
-
-	fmt.Printf("done\n")
 
 	tree = voxel.BrickTreeInit(size, size, size)
 	tree.Insert(10, 10, 10, 0, 255, 255)
 	ray := voxel.Ray{Origin: tensor.Vec3(1, 1, 1), Dir: tensor.Vec3(1, 1, 1).Normalized(), Tmax: 1e4}
 	hit := tree.MarchRay(ray)
 	fmt.Printf("direct rayhit: %+v\n", hit)
+
+	fmt.Printf("done\n")
 }
 
 func countBricks(br *voxel.BrickTree) int {

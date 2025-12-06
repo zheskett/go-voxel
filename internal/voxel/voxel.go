@@ -2,7 +2,6 @@ package voxel
 
 import (
 	"github.com/chewxy/math32"
-	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -261,20 +260,3 @@ func (vox *Voxels) AddVoxelObj(vObj VoxelObj, x, y, z int) {
 	}
 }
 
-// This is super temporary and just a proof of concept
-func (vox *Voxels) UpdateInputs(window *glfw.Window, pos tensor.Vector3, dir tensor.Vector3) {
-	ray := Ray{Origin: pos, Dir: dir, Tmax: 100.0}
-	hit := vox.MarchRay(ray)
-	if !hit.Hit {
-		return
-	}
-	if window.GetMouseButton(glfw.MouseButtonLeft) == glfw.Press {
-		x, y, z := hit.IntPos[0], hit.IntPos[1], hit.IntPos[2]
-		vox.ResetVoxel(x, y, z)
-	}
-	if window.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
-		voxel := hit.Position.Add(hit.Normal.Mul(VoxelRayDelta))
-		x, y, z := int(voxel.X), int(voxel.Y), int(voxel.Z)
-		vox.SetVoxel(x, y, z, 255, 255, 255)
-	}
-}

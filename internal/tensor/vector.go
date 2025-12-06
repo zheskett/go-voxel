@@ -96,11 +96,6 @@ func (v1 Vector2) Mul(c float32) Vector2 {
 	return Vector2{v1.X * c, v1.Y * c}
 }
 
-// Returns the element-wise product of a vector and a vector
-func (v1 Vector2) MulComponent(v2 Vector2) Vector2 {
-	return Vector2{v1.X * v2.X, v1.Y * v2.Y}
-}
-
 // Returns the quotient of a vector and a scalar
 func (v1 Vector2) Div(c float32) Vector2 {
 	invC := 1.0 / c
@@ -115,6 +110,11 @@ func (v1 Vector2) Dot(v2 Vector2) float32 {
 // Returns the cross product of two vectors
 func (v1 Vector2) Cross(v2 Vector2) Vector2 {
 	return Vector2{v1.X*v2.Y - v1.Y*v2.X, v1.Y*v2.X - v1.X*v2.Y}
+}
+
+// Returns the element-wise product of a vector and a vector
+func (v1 Vector2) MulComponent(v2 Vector2) Vector2 {
+	return Vector2{v1.X * v2.X, v1.Y * v2.Y}
 }
 
 // Performs a min comparison for all the elements of the vector
@@ -226,11 +226,6 @@ func (v1 Vector3) Mul(c float32) Vector3 {
 	return Vector3{v1.X * c, v1.Y * c, v1.Z * c}
 }
 
-// Returns the element-wise product of a vector and a vector
-func (v1 Vector3) MulComponent(v2 Vector3) Vector3 {
-	return Vector3{v1.X * v2.X, v1.Y * v2.Y, v1.Z * v2.Z}
-}
-
 // Returns the quotient of a vector and a scalar
 func (v1 Vector3) Div(c float32) Vector3 {
 	invC := 1.0 / c
@@ -249,6 +244,11 @@ func (v1 Vector3) Cross(v2 Vector3) Vector3 {
 		v1.Z*v2.X - v1.X*v2.Z,
 		v1.X*v2.Y - v1.Y*v2.X,
 	}
+}
+
+// Returns the element-wise product of a vector and a vector
+func (v1 Vector3) MulComponent(v2 Vector3) Vector3 {
+	return Vector3{v1.X * v2.X, v1.Y * v2.Y, v1.Z * v2.Z}
 }
 
 // Performs a min comparison for all the elements of the vector

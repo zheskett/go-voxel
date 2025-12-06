@@ -1,11 +1,12 @@
 package voxel
 
 import (
+	"github.com/chewxy/math32"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
 const (
-	// 	All raymarched position data is ambiguous as it gives the face lies exactly on
+	// All raymarched position data is ambiguous as it gives the face lies exactly on
 	// the shared face of two neighbor voxels. This distance offset is used in:
 	// vox = hit_position - hit_normal * VoxelRayDelta
 	// to find the actual voxel the ray hit
@@ -29,4 +30,78 @@ type RayHit struct {
 
 type Marchable interface {
 	MarchRay(ray Ray) RayHit
+}
+
+type MarchData struct {
+	Pos   Vec3i
+	Step  Vec3i
+	Inv   te.Vector3
+	Timev te.Vector3
+	Time  float32
+	Side  axis
+}
+
+func MarchDataInit(ray Ray) MarchData {
+	ox, oy, oz := ray.Origin.Elms()
+	dx, dy, dz := ray.Dir.Elms()
+	x, y, z := int(math32.Floor(ox)), int(math32.Floor(oy)), int(math32.Floor(oz))
+	adx, ady, adz := math32.Abs(dx), math32.Abs(dy), math32.Abs(dz)
+	fractx, fracty, fractz := ox-float32(x), oy-float32(y), oz-float32(z)
+
+	var stepx, stepy, stepz int
+	var invx, invy, invz float32
+	var timex, timey, timez float32
+
+	inf := math32.Inf(1)
+	if adx < 1e-9 {
+		stepx = 0
+		invx = inf
+		timex = inf
+	} else {
+		invx = 1.0 / adx
+		if dx > 0 {
+			stepx = 1
+			timex = invx * (1.0 - fractx)
+		} else {
+			stepx = -1
+			timex = invx * fractx
+		}
+	}
+	if ady < 1e-9 {
+		stepy = 0
+		invy = inf
+		timey = inf
+	} else {
+		invy = 1.0 / ady
+		if dy > 0 {
+			stepy = 1
+			timey = invy * (1.0 - fracty)
+		} else {
+			stepy = -1
+			timey = invy * fracty
+		}
+	}
+	if adz < 1e-9 {
+		stepz = 0
+		invz = inf
+		timez = inf
+	} else {
+		invz = 1.0 / adz
+		if dz > 0 {
+			stepz = 1
+			timez = invz * (1.0 - fractz)
+		} else {
+			stepz = -1
+			timez = invz * fractz
+		}
+	}
+
+	return MarchData{
+		Pos:   Vec3(x, y, z),
+		Step:  Vec3(stepx, stepy, stepz),
+		Inv:   te.Vec3(invx, invy, invz),
+		Timev: te.Vec3(timex, timey, timez),
+		Time:  0.0,
+		Side:  none,
+	}
 }
