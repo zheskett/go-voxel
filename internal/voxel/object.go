@@ -76,11 +76,9 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 	setChan := make(chan int, setChanSize)
 
 	var wg sync.WaitGroup
-	m1InvVec := te.Vec3(1.0/float32(X-1), 1.0/float32(Y-1), 1.0/float32(Z-1))
-	maxPosInv := obj.MaxVertsPos.Inv()
-	wg.Go(func() { calcVertSet(setChan, obj, boundRad, X, Y, Z, m1InvVec, maxPosInv) })       // S_v
-	wg.Go(func() { calcEdgeSet(setChan, obj, boundRad, vLen, X, Y, Z, m1InvVec, maxPosInv) }) // S_e
-	wg.Go(func() { calcBodySet(setChan, obj, cd, vLen, X, Y, Z, m1InvVec, maxPosInv) })       // S_b
+	wg.Go(func() { calcVertSet(setChan, obj, boundRad, vLen, X, Y, Z) }) // S_v
+	wg.Go(func() { calcEdgeSet(setChan, obj, boundRad, vLen, X, Y, Z) }) // S_e
+	wg.Go(func() { calcBodySet(setChan, obj, cd, vLen, X, Y, Z) })       // S_b
 
 	go func() {
 		wg.Wait()
@@ -142,14 +140,14 @@ func (vObj *VoxelObj) Flip(flipX, flipY, flipZ bool) {
 	}
 }
 
-func calcVertSet(setChan chan int, obj parser.Obj, boundRad float32, X, Y, Z int, m1InvVec, maxPosInv te.Vector3) {
+func calcVertSet(setChan chan int, obj parser.Obj, boundRad float32, vLen float32, X, Y, Z int) {
 	// All voxels whose voxel centers fall inside R_c are added to S_v
 	for _, v := range obj.Vertices {
-		cX, cY, cZ := idxPos(v, X, Y, Z, maxPosInv)
+		cX, cY, cZ := idxPos(v, X, Y, Z, vLen)
 		for i := -1; i <= 1; i++ {
 			for j := -1; j <= 1; j++ {
 				for k := -1; k <= 1; k++ {
-					if insideSphere(cX+k, cY+j, cZ+i, boundRad, v, X, Y, Z, m1InvVec, obj.MaxVertsPos) {
+					if insideSphere(cX+k, cY+j, cZ+i, boundRad, v, X, Y, Z, vLen) {
 						setChan <- bitIdx(cX+k, cY+j, cZ+i, X, Y, Z)
 					}
 				}
@@ -158,7 +156,7 @@ func calcVertSet(setChan chan int, obj parser.Obj, boundRad float32, X, Y, Z int
 	}
 }
 
-func calcEdgeSet(setChan chan int, obj parser.Obj, boundRad, vLen float32, X, Y, Z int, m1InvVec, maxPosInv te.Vector3) {
+func calcEdgeSet(setChan chan int, obj parser.Obj, boundRad, vLen float32, X, Y, Z int) {
 	// All voxels whose voxel center fall inside a cylinder with radius R_c
 	// and length L, where L is the length of the edge, are added to S_e
 	for _, e := range obj.Edges {
@@ -167,11 +165,11 @@ func calcEdgeSet(setChan chan int, obj parser.Obj, boundRad, vLen float32, X, Y,
 
 		// While pointing towards v2
 		for pos := v1; v2.Sub(pos).Dot(stepVec) > 0; pos = pos.Add(stepVec) {
-			cX, cY, cZ := idxPos(pos, X, Y, Z, maxPosInv)
+			cX, cY, cZ := idxPos(pos, X, Y, Z, vLen)
 			for i := -1; i <= 1; i++ {
 				for j := -1; j <= 1; j++ {
 					for k := -1; k <= 1; k++ {
-						if insideCylinder(cX+k, cY+j, cZ+i, boundRad, v1, v2, X, Y, Z, m1InvVec, obj.MaxVertsPos) {
+						if insideCylinder(cX+k, cY+j, cZ+i, boundRad, v1, v2, X, Y, Z, vLen) {
 							setChan <- bitIdx(cX+k, cY+j, cZ+i, X, Y, Z)
 						}
 					}
@@ -181,7 +179,7 @@ func calcEdgeSet(setChan chan int, obj parser.Obj, boundRad, vLen float32, X, Y,
 	}
 }
 
-func calcBodySet(setChan chan int, obj parser.Obj, cd ConnectivityDistance, vLen float32, X, Y, Z int, m1InvVec, maxPosInv te.Vector3) {
+func calcBodySet(setChan chan int, obj parser.Obj, cd ConnectivityDistance, vLen float32, X, Y, Z int) {
 	// All voxels who are inside planes G and H and inside edge planes E1 - E3 are added to S_f
 	invSqrt3 := 1.0 / math32.Sqrt(3.0)
 	sqrt3 := math32.Sqrt(3.0)
@@ -224,14 +222,14 @@ func calcBodySet(setChan chan int, obj parser.Obj, cd ConnectivityDistance, vLen
 				worldXMin, worldXMax := min(v1.X, v2.X, v3.X)-t, max(v1.X, v2.X, v3.X)+t
 				worldYMin, worldYMax := min(v1.Y, v2.Y, v3.Y)-t, max(v1.Y, v2.Y, v3.Y)+t
 				worldZMin, worldZMax := min(v1.Z, v2.Z, v3.Z)-t, max(v1.Z, v2.Z, v3.Z)+t
-				xMin, yMin, zMin := idxPos(te.Vec3(worldXMin, worldYMin, worldZMin), X, Y, Z, maxPosInv)
-				xMax, yMax, zMax := idxPos(te.Vec3(worldXMax, worldYMax, worldZMax), X, Y, Z, maxPosInv)
+				xMin, yMin, zMin := idxPos(te.Vec3(worldXMin, worldYMin, worldZMin), X, Y, Z, vLen)
+				xMax, yMax, zMax := idxPos(te.Vec3(worldXMax, worldYMax, worldZMax), X, Y, Z, vLen)
 
 				for z := zMin; z <= zMax; z++ {
 					for y := yMin; y <= yMax; y++ {
 						for x := xMin; x <= xMax; x++ {
-							if betweenPlanes(x, y, z, facePlane, t, X, Y, Z, m1InvVec, obj.MaxVertsPos) &&
-								insidePlaneTriangle(x, y, z, e1, e2, e3, X, Y, Z, m1InvVec, obj.MaxVertsPos) {
+							if betweenPlanes(x, y, z, facePlane, t, X, Y, Z, vLen) &&
+								insidePlaneTriangle(x, y, z, e1, e2, e3, X, Y, Z, vLen) {
 								setChan <- bitIdx(x, y, z, X, Y, Z)
 							}
 						}
@@ -253,10 +251,11 @@ func bitIdx(x, y, z, X, Y, _ int) int {
 }
 
 // Get closest idx of a voxel to a point
-func idxPos(v te.Vector3, X, Y, Z int, maxPosInv te.Vector3) (int, int, int) {
-	xPos := (v.X*maxPosInv.X + 1.0) * 0.5 * float32(X-1)
-	yPos := (v.Y*maxPosInv.Y + 1.0) * 0.5 * float32(Y-1)
-	zPos := (v.Z*maxPosInv.Z + 1.0) * 0.5 * float32(Z-1)
+func idxPos(v te.Vector3, X, Y, Z int, vLen float32) (int, int, int) {
+	vLenInv := 1.0 / vLen
+	xPos := v.X*vLenInv + float32(X-1)*0.5
+	yPos := v.Y*vLenInv + float32(Y-1)*0.5
+	zPos := v.Z*vLenInv + float32(Z-1)*0.5
 	x := int(math32.Round(xPos))
 	y := int(math32.Round(yPos))
 	z := int(math32.Round(zPos))
@@ -264,10 +263,10 @@ func idxPos(v te.Vector3, X, Y, Z int, maxPosInv te.Vector3) (int, int, int) {
 	return x, y, z
 }
 
-func toPos(x, y, z int, m1InvVec, maxPos te.Vector3) te.Vector3 {
-	xPos := (float32(x)*m1InvVec.X*2.0 - 1.0) * maxPos.X
-	yPos := (float32(y)*m1InvVec.Y*2.0 - 1.0) * maxPos.Y
-	zPos := (float32(z)*m1InvVec.Z*2.0 - 1.0) * maxPos.Z
+func toPos(x, y, z int, vLen float32, X, Y, Z int) te.Vector3 {
+	xPos := (float32(x) - float32(X-1)*0.5) * vLen
+	yPos := (float32(y) - float32(Y-1)*0.5) * vLen
+	zPos := (float32(z) - float32(Z-1)*0.5) * vLen
 	return te.Vec3(xPos, yPos, zPos)
 }
 
@@ -275,43 +274,43 @@ func surrounds(x, y, z int, X, Y, Z int) bool {
 	return x < X && y < Y && z < Z && x >= 0 && y >= 0 && z >= 0
 }
 
-func insideSphere(x, y, z int, radius float32, center te.Vector3, X, Y, Z int, m1InvVec, maxPos te.Vector3) bool {
+func insideSphere(x, y, z int, radius float32, center te.Vector3, X, Y, Z int, vLen float32) bool {
 	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
 
-	vPos := toPos(x, y, z, m1InvVec, maxPos)
+	vPos := toPos(x, y, z, vLen, X, Y, Z)
 	return vPos.Sub(center).LenSqr() <= radius*radius
 }
 
-func insideCylinder(x, y, z int, radius float32, a, b te.Vector3, X, Y, Z int, m1InvVec, maxPos te.Vector3) bool {
+func insideCylinder(x, y, z int, radius float32, a, b te.Vector3, X, Y, Z int, vLen float32) bool {
 	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
 
-	vPos := toPos(x, y, z, m1InvVec, maxPos)
+	vPos := toPos(x, y, z, vLen, X, Y, Z)
 	e := b.Sub(a)
 	return vPos.Sub(a).Dot(e) >= 0 &&
 		vPos.Sub(b).Dot(e) <= 0 &&
 		vPos.Sub(a).Cross(e).LenSqr() <= radius*radius*e.LenSqr()
 }
 
-func betweenPlanes(x, y, z int, facePlane plane, t float32, X, Y, Z int, m1InvVec, maxPos te.Vector3) bool {
+func betweenPlanes(x, y, z int, facePlane plane, t float32, X, Y, Z int, vLen float32) bool {
 	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
 
-	vPos := toPos(x, y, z, m1InvVec, maxPos)
+	vPos := toPos(x, y, z, vLen, X, Y, Z)
 	distance := facePlane.normVec.Dot(vPos) + facePlane.d
 	return math32.Abs(distance) <= t+epsilon
 }
 
-func insidePlaneTriangle(x, y, z int, e1, e2, e3 plane, X, Y, Z int, m1InvVec, maxPos te.Vector3) bool {
+func insidePlaneTriangle(x, y, z int, e1, e2, e3 plane, X, Y, Z int, vLen float32) bool {
 	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
 
-	vPos := toPos(x, y, z, m1InvVec, maxPos)
+	vPos := toPos(x, y, z, vLen, X, Y, Z)
 	distanceE1 := e1.normVec.Dot(vPos) + e1.d
 	distanceE2 := e2.normVec.Dot(vPos) + e2.d
 	distanceE3 := e3.normVec.Dot(vPos) + e3.d
