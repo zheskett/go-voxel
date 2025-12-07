@@ -147,6 +147,11 @@ func (v Vector2) Abs() Vector2 {
 	return Vector2{math32.Abs(v.X), math32.Abs(v.Y)}
 }
 
+// Returns the inverse of a 2D vector
+func (v Vector2) Inv() Vector2 {
+	return Vector2{1.0 / v.X, 1.0 / v.Y}
+}
+
 // End Vector2 Functions
 
 // Start Vector3 Functions
@@ -289,6 +294,11 @@ func (v Vector3) Min() float32 {
 // Returns the absolute value of a 3D vector
 func (v Vector3) Abs() Vector3 {
 	return Vector3{math32.Abs(v.X), math32.Abs(v.Y), math32.Abs(v.Z)}
+}
+
+// Returns the inverse of a 3D vector
+func (v Vector3) Inv() Vector3 {
+	return Vector3{1.0 / v.X, 1.0 / v.Y, 1.0 / v.Z}
 }
 
 // End Vector3 Functions

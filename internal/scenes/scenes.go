@@ -214,8 +214,20 @@ func VoxelDebugSceneHugeBunny(vox *vxl.Voxels) {
 		Position: te.Vec3(500, 32, 256),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
+	light5 := vxl.Light{
+		Position: te.Vec3(500, 256, 256),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light6 := vxl.Light{
+		Position: te.Vec3(256, 256, 256),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light7 := vxl.Light{
+		Position: te.Vec3(96, 32, 500),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
 	*vox = vxl.VoxelsInit(512, 512, 512)
-	vox.Lights = append(vox.Lights, light, light2, light3, light4)
+	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7)
 
 	// Bunny
 	bunny, err := vxl.VoxelizePath("assets/bunny.obj", false, true, false, vxl.T26, 512, [3]byte{255, 255, 255})

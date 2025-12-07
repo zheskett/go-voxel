@@ -2,6 +2,7 @@ package voxel
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 
 	"github.com/chewxy/math32"
@@ -24,6 +25,15 @@ type plane struct {
 const (
 	T26 ConnectivityDistance = 26
 	T6  ConnectivityDistance = 6
+)
+
+const (
+	setChanSize = 1000
+	epsilon     = 1e-9
+)
+
+var (
+	cpus = runtime.NumCPU()
 )
 
 // Same as Voxelize(ParseObj(path), ...) basically
@@ -56,12 +66,30 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 		boundRad *= math32.Sqrt(3.0)
 	}
 
-	set := BitArrayInit(resolution * resolution * resolution)
-	calcVertSet(&set, obj, boundRad, vLen, resolution) // S_v
-	calcEdgeSet(&set, obj, boundRad, vLen, resolution) // S_e
-	calcBodySet(&set, obj, cd, vLen, resolution)       // S_b
-	vObj := VoxelObj{resolution, resolution, resolution, set, color}
-	squash(&vObj, resolution)
+	// Calculate X, Y, Z
+	X := int(math32.Round(float32(resolution) * obj.MaxVertsPos.X))
+	Y := int(math32.Round(float32(resolution) * obj.MaxVertsPos.Y))
+	Z := int(math32.Round(float32(resolution) * obj.MaxVertsPos.Z))
+
+	set := BitArrayInit(Z * Y * X)
+	vObj := VoxelObj{X, Y, Z, set, color}
+	setChan := make(chan int, setChanSize)
+
+	var wg sync.WaitGroup
+	m1InvVec := te.Vec3(1.0/float32(X-1), 1.0/float32(Y-1), 1.0/float32(Z-1))
+	maxPosInv := obj.MaxVertsPos.Inv()
+	wg.Go(func() { calcVertSet(setChan, obj, boundRad, X, Y, Z, m1InvVec, maxPosInv) })       // S_v
+	wg.Go(func() { calcEdgeSet(setChan, obj, boundRad, vLen, X, Y, Z, m1InvVec, maxPosInv) }) // S_e
+	wg.Go(func() { calcBodySet(setChan, obj, cd, vLen, X, Y, Z, m1InvVec, maxPosInv) })       // S_b
+
+	go func() {
+		wg.Wait()
+		close(setChan)
+	}()
+
+	for i := range setChan {
+		set.Set(i)
+	}
 
 	return vObj, nil
 }
@@ -100,9 +128,9 @@ func (vObj *VoxelObj) Flip(flipX, flipY, flipZ bool) {
 		}
 	}
 	if flipZ {
-		for z := range vObj.X / 2 {
+		for z := range vObj.Z / 2 {
 			for y := range vObj.Y {
-				for x := range vObj.Z {
+				for x := range vObj.X {
 					idx1 := vObj.Index(x, y, z)
 					idx2 := vObj.Index(x, y, vObj.Z-z-1)
 					oldSet := vObj.Presence.Get(idx1)
@@ -114,15 +142,15 @@ func (vObj *VoxelObj) Flip(flipX, flipY, flipZ bool) {
 	}
 }
 
-func calcVertSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resolution int) {
+func calcVertSet(setChan chan int, obj parser.Obj, boundRad float32, X, Y, Z int, m1InvVec, maxPosInv te.Vector3) {
 	// All voxels whose voxel centers fall inside R_c are added to S_v
 	for _, v := range obj.Vertices {
-		cX, cY, cZ := idxPos(v, resolution)
+		cX, cY, cZ := idxPos(v, X, Y, Z, maxPosInv)
 		for i := -1; i <= 1; i++ {
 			for j := -1; j <= 1; j++ {
 				for k := -1; k <= 1; k++ {
-					if insideSphere(cX+k, cY+j, cZ+i, boundRad, v, vLen, resolution) {
-						set.Set(bitIdx(cX+k, cY+j, cZ+i, resolution))
+					if insideSphere(cX+k, cY+j, cZ+i, boundRad, v, X, Y, Z, m1InvVec, obj.MaxVertsPos) {
+						setChan <- bitIdx(cX+k, cY+j, cZ+i, X, Y, Z)
 					}
 				}
 			}
@@ -130,7 +158,7 @@ func calcVertSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resoluti
 	}
 }
 
-func calcEdgeSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resolution int) {
+func calcEdgeSet(setChan chan int, obj parser.Obj, boundRad, vLen float32, X, Y, Z int, m1InvVec, maxPosInv te.Vector3) {
 	// All voxels whose voxel center fall inside a cylinder with radius R_c
 	// and length L, where L is the length of the edge, are added to S_e
 	for _, e := range obj.Edges {
@@ -139,12 +167,12 @@ func calcEdgeSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resoluti
 
 		// While pointing towards v2
 		for pos := v1; v2.Sub(pos).Dot(stepVec) > 0; pos = pos.Add(stepVec) {
-			cX, cY, cZ := idxPos(pos, resolution)
+			cX, cY, cZ := idxPos(pos, X, Y, Z, maxPosInv)
 			for i := -1; i <= 1; i++ {
 				for j := -1; j <= 1; j++ {
 					for k := -1; k <= 1; k++ {
-						if insideCylinder(cX+k, cY+j, cZ+i, boundRad, v1, v2, vLen, resolution) {
-							set.Set(bitIdx(cX+k, cY+j, cZ+i, resolution))
+						if insideCylinder(cX+k, cY+j, cZ+i, boundRad, v1, v2, X, Y, Z, m1InvVec, obj.MaxVertsPos) {
+							setChan <- bitIdx(cX+k, cY+j, cZ+i, X, Y, Z)
 						}
 					}
 				}
@@ -153,70 +181,82 @@ func calcEdgeSet(set *BitArray, obj parser.Obj, boundRad, vLen float32, resoluti
 	}
 }
 
-func calcBodySet(set *BitArray, obj parser.Obj, cd ConnectivityDistance, vLen float32, resolution int) {
+func calcBodySet(setChan chan int, obj parser.Obj, cd ConnectivityDistance, vLen float32, X, Y, Z int, m1InvVec, maxPosInv te.Vector3) {
 	// All voxels who are inside planes G and H and inside edge planes E1 - E3 are added to S_f
 	invSqrt3 := 1.0 / math32.Sqrt(3.0)
 	sqrt3 := math32.Sqrt(3.0)
-	for _, f := range obj.Faces {
-		v1, v2, v3 := obj.Vertices[f[0]], obj.Vertices[f[1]], obj.Vertices[f[2]]
-		facePlane := plane{}
-		facePlane.normVec = v2.Sub(v1).Cross(v3.Sub(v1)).Normalized()
-		facePlane.d = facePlane.normVec.Dot(v1) * -1
+	var wg sync.WaitGroup
+	faceChan := make(chan [3]int, cpus)
+	for range cpus {
+		wg.Go(func() {
+			for f := range faceChan {
+				v1, v2, v3 := obj.Vertices[f[0]], obj.Vertices[f[1]], obj.Vertices[f[2]]
+				facePlane := plane{}
+				facePlane.normVec = v2.Sub(v1).Cross(v3.Sub(v1)).Normalized()
+				facePlane.d = facePlane.normVec.Dot(v1) * -1
 
-		e1, e2, e3 := plane{}, plane{}, plane{}
-		e1.normVec = facePlane.normVec.Cross(v2.Sub(v1)).Normalized()
-		e1.d = e1.normVec.Dot(v1) * -1
-		e2.normVec = facePlane.normVec.Cross(v3.Sub(v2)).Normalized()
-		e2.d = e2.normVec.Dot(v2) * -1
-		e3.normVec = facePlane.normVec.Cross(v1.Sub(v3)).Normalized()
-		e3.d = e3.normVec.Dot(v3) * -1
+				e1, e2, e3 := plane{}, plane{}, plane{}
+				e1.normVec = facePlane.normVec.Cross(v2.Sub(v1)).Normalized()
+				e1.d = e1.normVec.Dot(v1) * -1
+				e2.normVec = facePlane.normVec.Cross(v3.Sub(v2)).Normalized()
+				e2.d = e2.normVec.Dot(v2) * -1
+				e3.normVec = facePlane.normVec.Cross(v1.Sub(v3)).Normalized()
+				e3.d = e3.normVec.Dot(v3) * -1
 
-		cosBeta := max(math32.Abs(facePlane.normVec.X), math32.Abs(facePlane.normVec.Y), math32.Abs(facePlane.normVec.Z))
-		t := vLen * 0.5 * cosBeta
-		if cd == T26 {
-			// Find closest diagonal cos
-			cosAlpha := float32(0.0)
-			for i := -1; i <= 1; i += 2 {
-				for j := -1; j <= 1; j += 2 {
-					for k := -1; k <= 1; k += 2 {
-						diagVec := te.Vec3(float32(i), float32(j), float32(k)).Mul(invSqrt3)
-						cosAlpha = max(cosAlpha, facePlane.normVec.Dot(diagVec))
+				cosBeta := max(math32.Abs(facePlane.normVec.X), math32.Abs(facePlane.normVec.Y), math32.Abs(facePlane.normVec.Z))
+				t := vLen * 0.5 * cosBeta
+				if cd == T26 {
+					// Find closest diagonal cos
+					cosAlpha := float32(0.0)
+					for i := -1; i <= 1; i += 2 {
+						for j := -1; j <= 1; j += 2 {
+							for k := -1; k <= 1; k += 2 {
+								diagVec := te.Vec3(float32(i), float32(j), float32(k)).Mul(invSqrt3)
+								cosAlpha = max(cosAlpha, facePlane.normVec.Dot(diagVec))
+							}
+						}
+					}
+					t = vLen * 0.5 * sqrt3 * cosAlpha
+				}
+
+				// Need to find better way to do this
+				// Create a bounding box around the face
+				worldXMin, worldXMax := min(v1.X, v2.X, v3.X)-t, max(v1.X, v2.X, v3.X)+t
+				worldYMin, worldYMax := min(v1.Y, v2.Y, v3.Y)-t, max(v1.Y, v2.Y, v3.Y)+t
+				worldZMin, worldZMax := min(v1.Z, v2.Z, v3.Z)-t, max(v1.Z, v2.Z, v3.Z)+t
+				xMin, yMin, zMin := idxPos(te.Vec3(worldXMin, worldYMin, worldZMin), X, Y, Z, maxPosInv)
+				xMax, yMax, zMax := idxPos(te.Vec3(worldXMax, worldYMax, worldZMax), X, Y, Z, maxPosInv)
+
+				for z := zMin; z <= zMax; z++ {
+					for y := yMin; y <= yMax; y++ {
+						for x := xMin; x <= xMax; x++ {
+							if betweenPlanes(x, y, z, facePlane, t, X, Y, Z, m1InvVec, obj.MaxVertsPos) &&
+								insidePlaneTriangle(x, y, z, e1, e2, e3, X, Y, Z, m1InvVec, obj.MaxVertsPos) {
+								setChan <- bitIdx(x, y, z, X, Y, Z)
+							}
+						}
 					}
 				}
 			}
-			t = vLen * 0.5 * sqrt3 * cosAlpha
-		}
-
-		// Need to find better way to do this
-		// Create a bounding box around the face
-		worldXMin, worldXMax := min(v1.X, v2.X, v3.X)-t, max(v1.X, v2.X, v3.X)+t
-		worldYMin, worldYMax := min(v1.Y, v2.Y, v3.Y)-t, max(v1.Y, v2.Y, v3.Y)+t
-		worldZMin, worldZMax := min(v1.Z, v2.Z, v3.Z)-t, max(v1.Z, v2.Z, v3.Z)+t
-		xMin, yMin, zMin := idxPos(te.Vec3(worldXMin, worldYMin, worldZMin), resolution)
-		xMax, yMax, zMax := idxPos(te.Vec3(worldXMax, worldYMax, worldZMax), resolution)
-
-		for z := zMin; z <= zMax; z++ {
-			for y := yMin; y <= yMax; y++ {
-				for x := xMin; x <= xMax; x++ {
-					if betweenPlanes(x, y, z, facePlane, t, vLen, resolution) &&
-						insidePlaneTriangle(x, y, z, e1, e2, e3, vLen, resolution) {
-						set.Set(bitIdx(x, y, z, resolution))
-					}
-				}
-			}
-		}
+		})
 	}
+
+	for _, f := range obj.Faces {
+		faceChan <- f
+	}
+	close(faceChan)
+	wg.Wait()
 }
 
-func bitIdx(x, y, z, resolution int) int {
-	return resolution*resolution*z + resolution*y + x
+func bitIdx(x, y, z, X, Y, _ int) int {
+	return X*Y*z + X*y + x
 }
 
 // Get closest idx of a voxel to a point
-func idxPos(v te.Vector3, resolution int) (int, int, int) {
-	xPos := (v.X*float32(resolution) + float32(resolution)) * 0.5
-	yPos := (v.Y*float32(resolution) + float32(resolution)) * 0.5
-	zPos := (v.Z*float32(resolution) + float32(resolution)) * 0.5
+func idxPos(v te.Vector3, X, Y, Z int, maxPosInv te.Vector3) (int, int, int) {
+	xPos := (v.X*maxPosInv.X + 1.0) * 0.5 * float32(X-1)
+	yPos := (v.Y*maxPosInv.Y + 1.0) * 0.5 * float32(Y-1)
+	zPos := (v.Z*maxPosInv.Z + 1.0) * 0.5 * float32(Z-1)
 	x := int(math32.Round(xPos))
 	y := int(math32.Round(yPos))
 	z := int(math32.Round(zPos))
@@ -224,152 +264,56 @@ func idxPos(v te.Vector3, resolution int) (int, int, int) {
 	return x, y, z
 }
 
-func toPos(x, y, z int, vLen float32, resolution int) te.Vector3 {
-	rDiv2 := float32(resolution) * 0.5
-	return te.Vec3((float32(x)-rDiv2)*vLen, (float32(y)-rDiv2)*vLen, (float32(z)-rDiv2)*vLen)
+func toPos(x, y, z int, m1InvVec, maxPos te.Vector3) te.Vector3 {
+	xPos := (float32(x)*m1InvVec.X*2.0 - 1.0) * maxPos.X
+	yPos := (float32(y)*m1InvVec.Y*2.0 - 1.0) * maxPos.Y
+	zPos := (float32(z)*m1InvVec.Z*2.0 - 1.0) * maxPos.Z
+	return te.Vec3(xPos, yPos, zPos)
 }
 
-func insideSphere(x, y, z int, radius float32, center te.Vector3, vLen float32, resolution int) bool {
-	r := resolution
-	if !(x < r && y < r && z < r && x >= 0 && y >= 0 && z >= 0) {
+func surrounds(x, y, z int, X, Y, Z int) bool {
+	return x < X && y < Y && z < Z && x >= 0 && y >= 0 && z >= 0
+}
+
+func insideSphere(x, y, z int, radius float32, center te.Vector3, X, Y, Z int, m1InvVec, maxPos te.Vector3) bool {
+	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
 
-	vPos := toPos(x, y, z, vLen, resolution)
-	return vPos.Sub(center).LenSqr() < radius*radius
+	vPos := toPos(x, y, z, m1InvVec, maxPos)
+	return vPos.Sub(center).LenSqr() <= radius*radius
 }
 
-func insideCylinder(x, y, z int, radius float32, a, b te.Vector3, vLen float32, resolution int) bool {
-	r := resolution
-	if !(x < r && y < r && z < r && x >= 0 && y >= 0 && z >= 0) {
+func insideCylinder(x, y, z int, radius float32, a, b te.Vector3, X, Y, Z int, m1InvVec, maxPos te.Vector3) bool {
+	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
 
-	vPos := toPos(x, y, z, vLen, resolution)
+	vPos := toPos(x, y, z, m1InvVec, maxPos)
 	e := b.Sub(a)
-	return vPos.Sub(a).Dot(e) > 0 &&
-		vPos.Sub(b).Dot(e) < 0 &&
-		vPos.Sub(a).Cross(e).LenSqr() < radius*radius*e.LenSqr()
+	return vPos.Sub(a).Dot(e) >= 0 &&
+		vPos.Sub(b).Dot(e) <= 0 &&
+		vPos.Sub(a).Cross(e).LenSqr() <= radius*radius*e.LenSqr()
 }
 
-func betweenPlanes(x, y, z int, facePlane plane, t float32, vLen float32, resolution int) bool {
-	r := resolution
-	if !(x < r && y < r && z < r && x >= 0 && y >= 0 && z >= 0) {
+func betweenPlanes(x, y, z int, facePlane plane, t float32, X, Y, Z int, m1InvVec, maxPos te.Vector3) bool {
+	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
 
-	vPos := toPos(x, y, z, vLen, resolution)
+	vPos := toPos(x, y, z, m1InvVec, maxPos)
 	distance := facePlane.normVec.Dot(vPos) + facePlane.d
-	return math32.Abs(distance) <= t
+	return math32.Abs(distance) <= t+epsilon
 }
 
-func insidePlaneTriangle(x, y, z int, e1, e2, e3 plane, vLen float32, resolution int) bool {
-	r := resolution
-	if !(x < r && y < r && z < r && x >= 0 && y >= 0 && z >= 0) {
+func insidePlaneTriangle(x, y, z int, e1, e2, e3 plane, X, Y, Z int, m1InvVec, maxPos te.Vector3) bool {
+	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
 
-	vPos := toPos(x, y, z, vLen, resolution)
+	vPos := toPos(x, y, z, m1InvVec, maxPos)
 	distanceE1 := e1.normVec.Dot(vPos) + e1.d
 	distanceE2 := e2.normVec.Dot(vPos) + e2.d
 	distanceE3 := e3.normVec.Dot(vPos) + e3.d
-	return distanceE1 > 0 && distanceE2 > 0 && distanceE3 > 0
-}
-
-// Squashes the empty space on each axis to get accurate X, Y, Z
-func squash(vObj *VoxelObj, resolution int) {
-	minX, minY, minZ, maxX, maxY, maxZ := findBounds(vObj, resolution)
-	newX, newY, newZ := maxX-minX+1, maxY-minY+1, maxZ-minZ+1
-	newPresence := BitArrayInit(newX * newY * newZ)
-	currX, currY, currZ := 0, 0, 0
-	for z := minZ; z <= maxZ; z++ {
-		for y := minY; y <= maxY; y++ {
-			for x := minX; x <= maxX; x++ {
-				isFilled := vObj.Presence.Get(vObj.Index(x, y, z))
-				if isFilled {
-					newPresence.Set(currZ*newY*newX + currY*newX + currX)
-				}
-				currX++
-			}
-			currX = 0
-			currY++
-		}
-		currY = 0
-		currZ++
-	}
-	vObj.Presence = newPresence
-	vObj.X, vObj.Y, vObj.Z = newX, newY, newZ
-}
-
-func findBounds(vObj *VoxelObj, resolution int) (int, int, int, int, int, int) {
-	minXC, minYC, minZC := 0, 0, 0
-	maxXC, maxYC, maxZC := resolution-1, resolution-1, resolution-1
-
-	var wg sync.WaitGroup
-	wg.Go(func() {
-		foundmin, foundmax := false, false
-		for x := range resolution {
-			for z := range resolution {
-				for y := range resolution {
-					if !foundmin && vObj.Presence.Get(vObj.Index(x, y, z)) {
-						minXC = x
-						foundmin = true
-					}
-					if !foundmax && vObj.Presence.Get(vObj.Index(resolution-x-1, y, z)) {
-						maxXC = resolution - x - 1
-						foundmax = true
-					}
-					if foundmin && foundmax {
-						return
-					}
-				}
-			}
-		}
-	})
-
-	wg.Go(func() {
-		foundmin, foundmax := false, false
-		for y := range resolution {
-			for z := range resolution {
-				for x := range resolution {
-					if !foundmin && vObj.Presence.Get(vObj.Index(x, y, z)) {
-						minYC = y
-						foundmin = true
-					}
-					if !foundmax && vObj.Presence.Get(vObj.Index(x, resolution-y-1, z)) {
-						maxYC = resolution - y - 1
-						foundmax = true
-					}
-					if foundmin && foundmax {
-						return
-					}
-				}
-			}
-		}
-	})
-
-	wg.Go(func() {
-		foundmin, foundmax := false, false
-		for z := range resolution {
-			for y := range resolution {
-				for x := range resolution {
-					if !foundmin && vObj.Presence.Get(vObj.Index(x, y, z)) {
-						minZC = z
-						foundmin = true
-					}
-					if !foundmax && vObj.Presence.Get(vObj.Index(x, y, resolution-z-1)) {
-						maxZC = resolution - z - 1
-						foundmax = true
-					}
-					if foundmin && foundmax {
-						return
-					}
-				}
-			}
-		}
-	})
-
-	wg.Wait()
-
-	return minXC, minYC, minZC, maxXC, maxYC, maxZC
+	return distanceE1 >= -epsilon && distanceE2 >= -epsilon && distanceE3 >= -epsilon
 }
