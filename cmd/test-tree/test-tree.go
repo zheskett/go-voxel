@@ -13,7 +13,7 @@ func main() {
 	if tree.Root.Brick != nil {
 		panic("what??")
 	}
-	if tree.Root.IsBranch() {
+	if tree.Root.IsStem() {
 		panic("don't understand")
 	}
 	if tree.Root.IsLeaf() {
@@ -80,7 +80,7 @@ func recurCountVoxels(node *voxel.TreeNode) int {
 		}
 		return count
 	}
-	if node.IsBranch() {
+	if node.IsStem() {
 		count := 0
 		for i := range 8 {
 			count += recurCountVoxels(node.Leaves[i])
@@ -98,7 +98,7 @@ func recurMaxDepth(node *voxel.TreeNode) int {
 	if node.IsLeaf() {
 		return 0
 	}
-	if node.IsBranch() {
+	if node.IsStem() {
 		maxdepth := 0
 		for i := range 8 {
 			if node.Leaves[i] != nil {

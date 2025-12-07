@@ -152,7 +152,5 @@ func UpdateCamInputGLFW(cam *Camera, window *glfw.Window, frame *FrameData) {
 	if window.GetKey(glfw.KeyT) == glfw.Press {
 		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	}
-	dx, dy := frame.GetMouseDelta(window)
-	cam.UpdateRotationFPS(dy, dx)
 	cam.UpdatePositionFPS(float32(tx), float32(ty), float32(tz), frame)
 }

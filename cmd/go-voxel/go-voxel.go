@@ -34,9 +34,9 @@ func main() {
 	engine.Voxtree = tree
 	engine.Framedata = ren.FrameDataInit()
 	engine.SetScrollCallback()
+	engine.SetMouseCallback()
 
 	VoxelDebugSceneSmall(&engine.Voxtree)
-	VoxelDebugEmptyScene(&engine.Voxtree)
 
 	for {
 		engine.UpdateInputs()
@@ -85,21 +85,6 @@ func VoxelDebugSceneSmall(vox *vxl.BrickTree) {
 					vox.Insert(i, j, k, 200, 200, 200)
 				}
 			}
-		}
-	}
-}
-
-func VoxelDebugEmptyScene(vox *vxl.BrickTree) {
-	for i := range 256 {
-		for j := range 256 {
-			// Floor and ceiling
-			vox.Insert(i, 0, j, 200, 200, 200)
-			vox.Insert(i, 100, j, 200, 200, 200)
-			// Walls
-			vox.Insert(0, i, j, 200, 200, 200)
-			vox.Insert(256, i, j, 200, 200, 200)
-			vox.Insert(j, i, 0, 200, 200, 200)
-			vox.Insert(j, i, 256, 200, 200, 200)
 		}
 	}
 }

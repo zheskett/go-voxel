@@ -53,12 +53,10 @@ func (data *FrameData) ReportFps() {
 	fmt.Printf("FPS: %.2f\n", 1.0/data.Deltat)
 }
 
-func (data *FrameData) GetMouseDelta(window *glfw.Window) (float32, float32) {
-	mx_f64, my_f64 := window.GetCursorPos()
-	mx, my := float32(mx_f64), float32(my_f64)
+func (data *FrameData) GetMouseDelta(mxc, myc float64) (float32, float32) {
+	mx, my := float32(mxc), float32(myc)
 	dx, dy := data.mouse.X-mx, data.mouse.Y-my
 	data.mouse = tensor.Vec2(mx, my)
-
 	return dx, dy
 }
 

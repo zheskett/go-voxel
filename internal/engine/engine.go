@@ -45,3 +45,10 @@ func (eng *Engine) SetScrollCallback() {
 		eng.Camera.Movespeed = max(eng.Camera.Movespeed+float32(yoff)*moveSpeedInc, 0)
 	})
 }
+
+func (eng *Engine) SetMouseCallback() {
+	eng.Window.SetCursorPosCallback(func(w *glfw.Window, xpos float64, ypos float64) {
+		dx, dy := eng.Framedata.GetMouseDelta(xpos, ypos)
+		eng.Camera.UpdateRotationFPS(dy, dx)
+	})
+}
