@@ -45,7 +45,7 @@ func main() {
 	}
 }
 
-func VoxelDebugSceneSmall(vox *vxl.BrickTree) {
+func VoxelDebugSceneSmall(vox *vxl.Octree) {
 	// Make a floor and ceiling
 	for i := 1; i < 256; i++ {
 		for j := 1; j < 256; j++ {

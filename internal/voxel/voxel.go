@@ -2,7 +2,7 @@ package voxel
 
 import (
 	"github.com/chewxy/math32"
-	"github.com/zheskett/go-voxel/internal/tensor"
+	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
 // Compact storage for an array of bools
@@ -62,14 +62,14 @@ func (bits *BitArray) Clear() {
 
 // Just a point light
 type Light struct {
-	Position tensor.Vector3
-	Color    tensor.Vector3 // Can have mag > 1 for a bright light
+	Position te.Vector3
+	Color    te.Vector3 // Can have mag > 1 for a bright light
 }
 
 // Lighting info for a single voxel
 type CachedLighting struct {
-	Light tensor.Vector3 // The cumulative lighting it gets
-	Dir   tensor.Vector3 // The weighted direction of all lights in the scene w.r.t. that voxel
+	Light te.Vector3 // The cumulative lighting it gets
+	Dir   te.Vector3 // The weighted direction of all lights in the scene w.r.t. that voxel
 }
 
 // Naive storage as an array
@@ -218,13 +218,13 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 				rayhit.Color = vox.Color[idx]
 				switch side {
 				case axisX:
-					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(-float32(stepx))
+					rayhit.Normal = te.Vec3(1, 0, 0).Mul(-float32(stepx))
 				case axisY:
-					rayhit.Normal = tensor.Vec3(0, 1, 0).Mul(-float32(stepy))
+					rayhit.Normal = te.Vec3(0, 1, 0).Mul(-float32(stepy))
 				case axisZ:
-					rayhit.Normal = tensor.Vec3(0, 0, 1).Mul(-float32(stepz))
+					rayhit.Normal = te.Vec3(0, 0, 1).Mul(-float32(stepz))
 				default:
-					rayhit.Normal = tensor.Vec3(0, 0, 0)
+					rayhit.Normal = te.Vec3(0, 0, 0)
 				}
 				break
 			}

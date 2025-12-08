@@ -1,6 +1,7 @@
 package voxel
 
 import (
+	"github.com/chewxy/math32"
 	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -58,6 +59,11 @@ func (box *Box) size() Vec3i {
 	return box.high.Sub(box.low)
 }
 
+func (box *Box) isUnit() bool {
+	size := box.size()
+	return size.X == 1 && size.Y == 1 && size.Z == 1
+}
+
 func (box *Box) center() Vec3i {
 	return box.low.Add(box.high).Div(2)
 }
@@ -69,7 +75,7 @@ func (box *Box) surrounds(v Vec3i) bool {
 }
 
 // Slab-method of AABB and ray intersection
-func (box *Box) rayIntersection(ray Ray) (float32, float32) {
+func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 	tmin := float32(0.0)
 	tmax := ray.Tmax
 	dirs := ray.Dir.AsArray()
@@ -80,7 +86,7 @@ func (box *Box) rayIntersection(ray Ray) (float32, float32) {
 	for i := range 3 {
 		if dirs[i] == 0.0 {
 			if orig[i] < float32(low[i]) || orig[i] >= float32(high[i]) {
-				return 1, 0
+				return math32.Inf(1), math32.Inf(-1)
 			}
 			continue
 		}
@@ -98,7 +104,7 @@ func (box *Box) rayIntersection(ray Ray) (float32, float32) {
 			tmax = t1
 		}
 		if tmax < tmin {
-			return 1, 0 // There isn't an intersection
+			return math32.Inf(1), math32.Inf(-1) // There isn't an intersection
 		}
 	}
 
@@ -131,17 +137,12 @@ func (box *Box) index(x, y, z int) int {
 	return (x << 2) | (y << 1) | z
 }
 
-func canBrick(box *Box) bool {
-	size := box.size()
-	return size.X == BrickSize && size.Y == BrickSize && size.Z == BrickSize
-}
-
 type TreeWalker struct {
 	node  *TreeNode
 	level int
 }
 
-func TreeWalkerInit(tree *BrickTree) TreeWalker {
+func TreeWalkerInit(tree *Octree) TreeWalker {
 	return TreeWalker{&tree.Root, 0}
 }
 
@@ -208,13 +209,13 @@ func (tw *TreeWalker) GetOctantCoords(pos, center Vec3i) Vec3i {
 // Doubly linked octant node
 type TreeNode struct {
 	Box    Box
-	Brick  *Brick
+	Voxel  Voxel
 	Stem   *TreeNode
 	Leaves [8]*TreeNode
 }
 
 func TreeNodeInit(box Box, stem *TreeNode) TreeNode {
-	return TreeNode{box, nil, stem, [8]*TreeNode{}}
+	return TreeNode{box, VoxelInit(), stem, [8]*TreeNode{}}
 }
 
 // If we are at the top of the tree
@@ -223,18 +224,18 @@ func (node *TreeNode) IsRoot() bool {
 }
 
 // Basically returns if we can jump that entire octant
-func (node *TreeNode) IsEmtpy() bool {
-	return node.Brick == nil && node.Leaves[0] == nil
+func (node *TreeNode) IsEmpty() bool {
+	return !node.Voxel.Present
 }
 
 // Has leaves that need to be searched in order
 func (node *TreeNode) IsStem() bool {
-	return node.Brick == nil && node.Leaves[0] != nil
+	return node.Leaves[0] != nil
 }
 
-// Has an active brick that we need to search
+// Has a voxel
 func (node *TreeNode) IsLeaf() bool {
-	return node.Brick != nil && node.Leaves[0] == nil
+	return node.Leaves[0] == nil
 }
 
 func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
@@ -245,17 +246,10 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 		return false
 	}
 
-	// We already have a brick, so just put the voxel in it
-	if node.IsLeaf() {
-		node.insertLocalBrick(pos, r, g, b)
-		return true
-	}
-
 	// There is no brick, but one can be directly created
-	if node.IsEmtpy() && canBrick(&node.Box) {
-		brick := BrickInit()
-		node.Brick = &brick
-		node.insertLocalBrick(pos, r, g, b)
+	if node.IsEmpty() && node.Box.isUnit() {
+		node.Voxel.Present = true
+		node.Voxel.Color = [3]byte{r, g, b}
 		return true
 	}
 
@@ -273,11 +267,6 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 	return false
 }
 
-func (node *TreeNode) insertLocalBrick(pos Vec3i, r byte, g byte, b byte) {
-	localpos := pos.Sub(node.Box.low)
-	node.Brick.Set(localpos.X, localpos.Y, localpos.Z, r, g, b)
-}
-
 func (node *TreeNode) subdivide() {
 	parts := node.Box.subdivide()
 	for i := range 8 {
@@ -289,42 +278,18 @@ func (node *TreeNode) subdivide() {
 func (node *TreeNode) MarchRay(ray Ray) RayHit {
 	rayhit := RayHit{Hit: false}
 
-	tmin, tmax := node.Box.rayIntersection(ray)
+	tmin, tmax := node.Box.RayIntersection(ray)
 	if tmax < tmin || tmin > ray.Tmax {
 		return rayhit // Never hits the bounding box
 	}
 
-	if node.IsLeaf() {
-		originatentry := ray.Origin.Add(ray.Dir.Mul(tmin))
-		localorigin := originatentry.Sub(tensor.Vec3(
-			float32(node.Box.low.X),
-			float32(node.Box.low.Y),
-			float32(node.Box.low.Z),
-		))
-
-		brickray := Ray{
-			Origin: localorigin,
-			Dir:    ray.Dir,
-			Tmax:   tmax - tmin,
-		}
-
-		hit := node.Brick.MarchRay(brickray)
-		if hit.Hit {
-			hit.Time += tmin
-			hit.Position = ray.Origin.Add(ray.Dir.Mul(hit.Time))
-			hit.IntPos[0] += node.Box.low.X
-			hit.IntPos[1] += node.Box.low.Y
-			hit.IntPos[2] += node.Box.low.Z
-			return hit
-		}
+	if node.Voxel.Present {
+		rayhit.Hit = true
+		rayhit.Time = tmin
+		rayhit.Color = node.Voxel.Color
+		return rayhit
 	}
 
-	// If it is a branch, recursively dive into each leaf
-	// This can be heavily optimized with some bitmasking trick instead of checking
-	// all 8 leaves, but I don't understand how to do that optimization yet
-	//
-	// Basically, this always has to check all 8 leaves while one average it should
-	// only take 4 checks to find a hit
 	if node.IsStem() {
 		closesthit := RayHit{Hit: false}
 		closesttime := ray.Tmax
@@ -345,34 +310,44 @@ func (node *TreeNode) MarchRay(ray Ray) RayHit {
 	return rayhit
 }
 
-type BrickTree struct {
+type Octree struct {
 	Root TreeNode
 }
 
-func BrickTreeInit(x, y, z int) BrickTree {
-	// This is just for now, becuase I can't even get it to work with a self-similar one
-	if x%BrickSize != 0 || y%BrickSize != 0 || z%BrickSize != 0 {
-		panic("Current tree must be multiples of 8 until it is working properly")
-	}
-
+func BrickTreeInit(x, y, z int) Octree {
 	// Currently, the whole tree is 'lopsided' to one side and not centered around zero
 	// to allow for direct translation from the array storage without coordinate system
 	// transformations
-	return BrickTree{TreeNodeInit(BoxInit(0, 0, 0, x, y, z), nil)}
+	return Octree{TreeNodeInit(BoxInit(0, 0, 0, x, y, z), nil)}
 }
 
-func (bt *BrickTree) Insert(x, y, z int, r, g, b byte) bool {
+func (bt *Octree) Insert(x, y, z int, r, g, b byte) bool {
 	return bt.Root.RecursiveInsert(x, y, z, r, g, b)
 }
 
 // Entry point for sending a ray into the tree
-func (bt *BrickTree) MarchRay(ray Ray) RayHit {
+func (bt *Octree) MarchRay(ray Ray) RayHit {
 	return bt.Root.MarchRay(ray)
 }
 
-type SubMarch interface {
-	March(ray Ray, march MarchData) RayHit
+type Voxel struct {
+	Present bool
+	Color   [3]byte
 }
+
+func VoxelInit() Voxel {
+	return Voxel{Present: false, Color: [3]byte{0, 0, 0}}
+}
+
+// Get rid of all this to make debugging easier, this is a really optimization but
+// it is too confusing for me right now
+//
+// This stuff shouldn't be used anywhere at this point
+/*
+###################################################################################################
+###################################################################################################
+###################################################################################################
+*/
 
 // This is basically a slimmed down clone of the old Voxel struct.
 //

@@ -10,17 +10,8 @@ import (
 func main() {
 	size := 128
 	tree := voxel.BrickTreeInit(size, size, size)
-	if tree.Root.Brick != nil {
-		panic("what??")
-	}
 	if tree.Root.IsStem() {
-		panic("don't understand")
-	}
-	if tree.Root.IsLeaf() {
-		panic("there shouldn't be data there yet")
-	}
-	if !tree.Root.IsEmtpy() {
-		panic("why is there no assert")
+		panic("should have all nil leaves")
 	}
 
 	for i := range size {
@@ -31,39 +22,34 @@ func main() {
 
 	depth := maxDepth(&tree)
 	voxels := countVoxels(&tree)
-	bricks := countBricks(&tree)
 	fmt.Printf("max tree depth: %d\n", depth)
 	fmt.Printf("voxels in the tree: %d\n", voxels)
-	fmt.Printf("bricks in the tree: %d\n", bricks)
 
 	tree = voxel.BrickTreeInit(size, size, size)
 	tree.Insert(10, 10, 10, 0, 255, 255)
 	ray := voxel.Ray{Origin: tensor.Vec3(1, 1, 1), Dir: tensor.Vec3(1, 1, 1).Normalized(), Tmax: 1e4}
 	hit := tree.MarchRay(ray)
 	fmt.Printf("direct rayhit: %+v\n", hit)
+	if !hit.Hit {
+		panic("didn't hit tree")
+	}
+
+	aabb := voxel.BoxInit(-1, -1, -1, 1, 1, 1)
+	ray = voxel.Ray{Origin: tensor.Vec3(-5, 0, 0), Dir: tensor.Vec3(1, 0, 0), Tmax: 10}
+	t0, t1 := aabb.RayIntersection(ray)
+	if t0 > t1 {
+		panic("dirct ray didn't hit")
+	}
+	ray.Dir = ray.Dir.Mul(-1)
+	t0, t1 = aabb.RayIntersection(ray)
+	if t0 < t1 {
+		panic("ray shouldn't have it")
+	}
 
 	fmt.Printf("done\n")
 }
 
-func countBricks(br *voxel.BrickTree) int {
-	return recurCountBricks(&br.Root)
-}
-
-func recurCountBricks(node *voxel.TreeNode) int {
-	if node == nil {
-		return 0
-	}
-	if node.IsLeaf() {
-		return 1
-	}
-	bricks := 0
-	for i := range 8 {
-		bricks += recurCountBricks(node.Leaves[i])
-	}
-	return bricks
-}
-
-func countVoxels(br *voxel.BrickTree) int {
+func countVoxels(br *voxel.Octree) int {
 	return recurCountVoxels(&br.Root)
 }
 
@@ -73,10 +59,8 @@ func recurCountVoxels(node *voxel.TreeNode) int {
 	}
 	if node.IsLeaf() {
 		count := 0
-		for i := range voxel.BrickTotal {
-			if node.Brick.Presence.Get(i) {
-				count++
-			}
+		if node.Voxel.Present {
+			count++
 		}
 		return count
 	}
@@ -90,7 +74,7 @@ func recurCountVoxels(node *voxel.TreeNode) int {
 	return 0
 }
 
-func maxDepth(br *voxel.BrickTree) int {
+func maxDepth(br *voxel.Octree) int {
 	return recurMaxDepth(&br.Root)
 }
 

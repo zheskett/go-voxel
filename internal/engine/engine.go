@@ -16,7 +16,7 @@ type Engine struct {
 	Renderer  *render.RenderManager
 	Window    *glfw.Window
 	Camera    render.Camera
-	Voxtree   voxel.BrickTree
+	Voxtree   voxel.Octree
 	Framedata render.FrameData
 }
 
