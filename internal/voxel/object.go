@@ -29,7 +29,6 @@ const (
 
 const (
 	setChanSize = 1000
-	epsilon     = 0
 )
 
 var (
@@ -314,5 +313,5 @@ func insidePlaneTriangle(x, y, z int, e1, e2, e3 plane, X, Y, Z int, vLen float3
 	distanceE1 := e1.normVec.Dot(vPos) + e1.d
 	distanceE2 := e2.normVec.Dot(vPos) + e2.d
 	distanceE3 := e3.normVec.Dot(vPos) + e3.d
-	return distanceE1 >= -epsilon && distanceE2 >= -epsilon && distanceE3 >= -epsilon
+	return distanceE1 >= 0 && distanceE2 >= 0 && distanceE3 >= 0
 }
