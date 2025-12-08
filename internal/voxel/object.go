@@ -29,7 +29,7 @@ const (
 
 const (
 	setChanSize = 1000
-	epsilon     = 1e-9
+	epsilon     = 0
 )
 
 var (
@@ -67,9 +67,9 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 	}
 
 	// Calculate X, Y, Z
-	X := int(math32.Round(float32(resolution) * obj.MaxVertsPos.X))
-	Y := int(math32.Round(float32(resolution) * obj.MaxVertsPos.Y))
-	Z := int(math32.Round(float32(resolution) * obj.MaxVertsPos.Z))
+	X := int(math32.Ceil(float32(resolution) * obj.MaxVertsPos.X))
+	Y := int(math32.Ceil(float32(resolution) * obj.MaxVertsPos.Y))
+	Z := int(math32.Ceil(float32(resolution) * obj.MaxVertsPos.Z))
 
 	set := BitArrayInit(Z * Y * X)
 	vObj := VoxelObj{X, Y, Z, set, color}
@@ -302,7 +302,7 @@ func betweenPlanes(x, y, z int, facePlane plane, t float32, X, Y, Z int, vLen fl
 
 	vPos := toPos(x, y, z, vLen, X, Y, Z)
 	distance := facePlane.normVec.Dot(vPos) + facePlane.d
-	return math32.Abs(distance) <= t+epsilon
+	return math32.Abs(distance) <= t
 }
 
 func insidePlaneTriangle(x, y, z int, e1, e2, e3 plane, X, Y, Z int, vLen float32) bool {
