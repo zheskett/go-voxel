@@ -15,12 +15,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Vox: \n%v\n", vox)
+	//fmt.Printf("Vox: \n%v\n", vox)
 
 	vObj, err := voxel.ConvertVox(vox, false, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("%v\n", vObj)
+	fmt.Printf("%v\n", vObj.Y)
 }

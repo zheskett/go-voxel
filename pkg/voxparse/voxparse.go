@@ -17,7 +17,8 @@ const (
 	packTag        = "PACK"
 	sizeTag        = "SIZE"
 	xyziTag        = "XYZI"
-	// colorTag       = "RGBA" (Use default colors for now)
+	colorTag       = "RGBA"
+	paletteSize    = 256
 )
 
 type fileBytes struct {
@@ -77,7 +78,22 @@ func Parse(path string) (Vox, error) {
 	}
 
 	vox.NumModels = len(vox.Models)
-	vox.Palette = DefaultPalette
+
+	rgbaSize, _, err := fb.findTag(colorTag)
+	// No color tag
+	if err != nil {
+		vox.Palette = DefaultPalette
+		return vox, nil
+	}
+
+	if rgbaSize != paletteSize*4 {
+		return Vox{}, fmt.Errorf("Malformed RGBA tag")
+	}
+
+	vox.Palette, err = fb.readPalette()
+	if err != nil {
+		return Vox{}, err
+	}
 
 	return vox, nil
 }
@@ -180,4 +196,29 @@ func (fb *fileBytes) parseModel() (Model, error) {
 	}
 
 	return model, nil
+}
+
+// readPalette reads the palette of a .vox file.
+// Returns the palette and an error if one has occurred
+func (fb *fileBytes) readPalette() (VoxPalette, error) {
+	if len(fb.byteArr[fb.pos:]) < paletteSize*4 {
+		return VoxPalette{}, fmt.Errorf("Not enough RGBA data")
+	}
+
+	palette := make(VoxPalette, paletteSize)
+	for i := range paletteSize - 1 {
+		palette[i+1].R = fb.byteArr[fb.pos]
+		palette[i+1].G = fb.byteArr[fb.pos+1]
+		palette[i+1].B = fb.byteArr[fb.pos+2]
+		palette[i+1].A = fb.byteArr[fb.pos+3]
+		fb.pos += 4
+	}
+	// Then the last one is the first one? idk
+	palette[0].R = fb.byteArr[fb.pos]
+	palette[0].G = fb.byteArr[fb.pos+1]
+	palette[0].B = fb.byteArr[fb.pos+2]
+	palette[0].A = fb.byteArr[fb.pos+3]
+	fb.pos += 4
+
+	return palette, nil
 }

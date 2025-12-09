@@ -243,3 +243,36 @@ func VoxelDebugSceneHugeBunny(vox *vxl.Voxels) {
 
 	vox.AddVoxelObj(bunny, 0, 0, 0)
 }
+
+func VoxelDebugSceneTrees(vox *vxl.Voxels) {
+	brightness := 30000
+	light := vxl.Light{
+		Position: te.Vec3(4, 2, 6),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 2)),
+	}
+	light2 := vxl.Light{
+		Position: te.Vec3(500, 32, 96),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light3 := vxl.Light{
+		Position: te.Vec3(500, 32, 500),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light4 := vxl.Light{
+		Position: te.Vec3(500, 32, 256),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light5 := vxl.Light{
+		Position: te.Vec3(500, 256, 256),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	*vox = vxl.VoxelsInit(512, 512, 512)
+	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5)
+
+	// Fall Tree
+	fallTree, err := vxl.ConvertVoxPath("assets/FallTree.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	vox.AddVoxelObj(fallTree, 0, 0, 0)
+}
