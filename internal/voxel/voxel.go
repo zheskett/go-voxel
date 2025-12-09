@@ -254,7 +254,8 @@ func (vox *Voxels) AddVoxelObj(vObj VoxelObj, x, y, z int) {
 			for k := range vObj.X {
 				idx := vObj.Index(k, j, i)
 				if vObj.Presence.Get(idx) && vox.Surrounds(x+k, y+j, z+i) {
-					vox.SetVoxel(x+k, y+j, z+i, vObj.Color[0], vObj.Color[1], vObj.Color[2])
+					clr := vObj.ColorPalete[vObj.ColorIdx[idx]]
+					vox.SetVoxel(x+k, y+j, z+i, clr.R, clr.G, clr.B)
 				}
 			}
 		}

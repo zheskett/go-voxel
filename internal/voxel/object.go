@@ -9,12 +9,14 @@ import (
 	"github.com/zheskett/go-voxel/internal/parser"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 	"github.com/zheskett/go-voxel/pkg/voxparse"
+	clr "image/color"
 )
 
 type VoxelObj struct {
-	X, Y, Z  int
-	Presence BitArray
-	Color    [3]byte
+	X, Y, Z     int
+	Presence    BitArray
+	ColorPalete voxparse.VoxPalette
+	ColorIdx    []byte
 }
 
 type ConnectivityDistance int
@@ -54,29 +56,34 @@ func ConvertVox(vox voxparse.Vox, flipX, flipY, flipZ bool) (VoxelObj, error) {
 	}
 
 	// .vox uses Z as gravity dir
-	model := vox.Models[0]
-	vObj.X = model.SizeX
-	vObj.Z = model.SizeY
-	vObj.Y = model.SizeZ
+	for _, m := range vox.Models {
+		vObj.X = max(m.SizeX, vObj.X)
+		vObj.Y = max(m.SizeX, vObj.Y)
+		vObj.Z = max(m.SizeX, vObj.Z)
+	}
 	vObj.Presence = BitArrayInit(vObj.Z * vObj.Y * vObj.X)
-	for _, v := range model.Voxels {
-		// Again, .vox uses Z as gravity dir
-		x, y, z := int(v.X), int(v.Z), int(v.Y)
-		if flipX {
-			x = vObj.X - x - 1
+	vObj.ColorIdx = make([]byte, vObj.Z*vObj.Y*vObj.X)
+	for _, m := range vox.Models {
+		for _, v := range m.Voxels {
+			// Again, .vox uses Z as gravity dir
+			x, y, z := int(v.X), int(v.Z), int(v.Y)
+			if flipX {
+				x = vObj.X - x - 1
+			}
+			if flipY {
+				y = vObj.Y - y - 1
+			}
+			if flipZ {
+				z = vObj.Z - z - 1
+			}
+			idx := vObj.Index(x, y, z)
+			vObj.Presence.Set(idx)
+			vObj.ColorIdx[idx] = v.I
 		}
-		if flipY {
-			y = vObj.Y - y - 1
-		}
-		if flipZ {
-			z = vObj.Z - z - 1
-		}
-		idx := vObj.Index(x, y, z)
-		vObj.Presence.Set(idx)
 	}
 
-	// No color for now
-	vObj.Color = [3]byte{0xff, 0xff, 0xff}
+	vObj.ColorPalete = vox.Palette
+
 	return vObj, nil
 }
 
@@ -116,7 +123,8 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 	Z := int(math32.Ceil(float32(resolution) * obj.MaxVertsPos.Z))
 
 	set := BitArrayInit(Z * Y * X)
-	vObj := VoxelObj{X, Y, Z, set, color}
+	imgColor := clr.RGBA{color[0], color[1], color[2], 0xff}
+	vObj := VoxelObj{X, Y, Z, set, voxparse.VoxPalette{imgColor}, make([]byte, Z*Y*X)}
 	setChan := make(chan int, setChanSize)
 
 	var wg sync.WaitGroup

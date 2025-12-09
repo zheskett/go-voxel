@@ -27,9 +27,10 @@ type fileBytes struct {
 
 // Vox contains information about a .vox file.
 type Vox struct {
-	Version   int     // The version of the .vox file
-	NumModels int     // The number of models
-	Models    []Model // The model data
+	Version   int        // The version of the .vox file
+	NumModels int        // The number of models
+	Models    []Model    // The model data
+	Palette   VoxPalette // The palette of the .vox file
 }
 
 // Models contains the size of a model and the model data
@@ -62,15 +63,21 @@ func Parse(path string) (Vox, error) {
 		return Vox{}, err
 	}
 
-	for range vox.NumModels {
+	for {
 		model, err := fb.parseModel()
 		if err != nil {
 			return Vox{}, err
 		}
 		vox.Models = append(vox.Models, model)
+		next := bytes.Index(fb.byteArr[fb.pos:], []byte(sizeTag))
+		if next == -1 || (len(vox.Models) >= vox.NumModels && vox.NumModels != 0) {
+			break
+		}
+		fb.pos += next
 	}
 
-	fmt.Printf("%s\n", fb.byteArr[fb.pos:])
+	vox.NumModels = len(vox.Models)
+	vox.Palette = DefaultPalette
 
 	return vox, nil
 }
@@ -87,12 +94,12 @@ func (fb *fileBytes) readInt() int {
 // Returns the chunk data size and children chunks
 // Returns an error if the tag is not found
 func (fb *fileBytes) findTag(tag string) (int, int, error) {
-	location := bytes.Index(fb.byteArr, []byte(tag))
+	location := bytes.Index(fb.byteArr[fb.pos:], []byte(tag))
 	if location == -1 {
 		return 0, 0, fmt.Errorf("Tag %v not found in file", tag)
 	}
 
-	fb.pos = location + len(tag)
+	fb.pos += location + len(tag)
 	if fb.pos >= len(fb.byteArr)-8 {
 		return 0, 0, fmt.Errorf("Tag %v data occurs passed file end", tag)
 	}
@@ -108,8 +115,8 @@ func (fb *fileBytes) parseHeader() (int, error) {
 	if string(fb.byteArr[:len(voxMagicString)]) != voxMagicString {
 		return 0, fmt.Errorf("Invalid vox file, magic string not found")
 	}
-	fb.pos = len(voxMagicString) + 4
-	version := int(binary.LittleEndian.Uint32(fb.byteArr[len(voxMagicString):]))
+	fb.pos = len(voxMagicString)
+	version := fb.readInt()
 
 	mainSize, mainChildrenSize, err := fb.findTag(mainTag)
 	if err != nil {
@@ -122,10 +129,11 @@ func (fb *fileBytes) parseHeader() (int, error) {
 	return version, nil
 }
 
-// checkPack returns the number of models via the PACK header
+// checkPack returns the number of models via the PACK header.
+// 0 means no pack tag, so should just search for SIZE tags until none
 func (fb *fileBytes) checkPack() (int, error) {
 	if len(fb.byteArr[fb.pos:]) < 16 || string(fb.byteArr[fb.pos:fb.pos+4]) != packTag {
-		return 1, nil
+		return 0, nil
 	}
 
 	_, _, err := fb.findTag(packTag)
