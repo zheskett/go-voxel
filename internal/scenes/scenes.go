@@ -263,16 +263,49 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
 	light5 := vxl.Light{
-		Position: te.Vec3(500, 256, 256),
+		Position: te.Vec3(256, 400, 256),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
+	light6 := vxl.Light{
+		Position: te.Vec3(180, 200, 200),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 4)),
+	}
+	light7 := vxl.Light{
+		Position: te.Vec3(1, 140, 250),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
+	}
 	*vox = vxl.VoxelsInit(512, 512, 512)
-	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5)
+	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7)
 
 	// Fall Tree
 	fallTree, err := vxl.ConvertVoxPath("assets/FallTree.vox", false, true, false)
 	if err != nil {
 		panic(err)
 	}
+	fallTree.Squash()
 	vox.AddVoxelObj(fallTree, 0, 0, 0)
+
+	// PineFluffy
+	pine, err := vxl.ConvertVoxPath("assets/PineFluffy.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	pine.Squash()
+	vox.AddVoxelObj(pine, 200, 110, 200)
+
+	// Menger
+	menger, err := vxl.ConvertVoxPath("assets/menger.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	menger.Squash()
+	vox.AddVoxelObj(menger, 0, vox.Y-int(menger.Y)-100, 0)
+
+	// Monument
+	monu, err := vxl.ConvertVoxPath("assets/monu10.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	monu.Squash()
+	vox.AddVoxelObj(monu, 0, vox.Y-int(monu.Y)-250, 200)
 }
