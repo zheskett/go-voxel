@@ -48,6 +48,12 @@ func VoxelDebugEmptyScene(vox *vxl.Voxels) {
 		panic(err)
 	}
 	vox.AddVoxelObj(cow, vox.X/4-35, 0, vox.Z/4-35)
+
+	tree, err := vxl.ConvertVoxPath("assets/PineFluffy.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	vox.AddVoxelObj(tree, 150, -30, 30)
 }
 
 // A small room with 3 colored lights and boxes everywhere

@@ -8,6 +8,7 @@ import (
 	"github.com/chewxy/math32"
 	"github.com/zheskett/go-voxel/internal/parser"
 	te "github.com/zheskett/go-voxel/internal/tensor"
+	"github.com/zheskett/go-voxel/pkg/voxparse"
 )
 
 type VoxelObj struct {
@@ -34,6 +35,50 @@ const (
 var (
 	cpus = runtime.NumCPU()
 )
+
+// ConvertVoxPath converts a MagicaVoxel .vox file path to a VoxelObj
+func ConvertVoxPath(path string, flipX, flipY, flipZ bool) (VoxelObj, error) {
+	vox, err := voxparse.Parse(path)
+	if err != nil {
+		return VoxelObj{}, err
+	}
+
+	return ConvertVox(vox, flipX, flipY, flipZ)
+}
+
+// ConvertVox converts a MagicaVoxel .vox file to a VoxelObj
+func ConvertVox(vox voxparse.Vox, flipX, flipY, flipZ bool) (VoxelObj, error) {
+	vObj := VoxelObj{}
+	if vox.NumModels < 1 {
+		return VoxelObj{}, fmt.Errorf("Not enough models in .vox")
+	}
+
+	// .vox uses Z as gravity dir
+	model := vox.Models[0]
+	vObj.X = model.SizeX
+	vObj.Z = model.SizeY
+	vObj.Y = model.SizeZ
+	vObj.Presence = BitArrayInit(vObj.Z * vObj.Y * vObj.X)
+	for _, v := range model.Voxels {
+		// Again, .vox uses Z as gravity dir
+		x, y, z := int(v.X), int(v.Z), int(v.Y)
+		if flipX {
+			x = vObj.X - x - 1
+		}
+		if flipY {
+			y = vObj.Y - y - 1
+		}
+		if flipZ {
+			z = vObj.Z - z - 1
+		}
+		idx := vObj.Index(x, y, z)
+		vObj.Presence.Set(idx)
+	}
+
+	// No color for now
+	vObj.Color = [3]byte{0xff, 0xff, 0xff}
+	return vObj, nil
+}
 
 // Same as Voxelize(ParseObj(path), ...) basically
 func VoxelizePath(path string, flipX, flipY, flipZ bool, cd ConnectivityDistance,
