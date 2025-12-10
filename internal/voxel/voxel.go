@@ -132,17 +132,6 @@ func (vox *Voxels) AddVoxelObj(vObj VoxelObj, x, y, z int) {
 	}
 }
 
-// Enum for axis
-// Probably unnecessary for this use
-type axis uint8
-
-const (
-	axisX axis = iota
-	axisY
-	axisZ
-	none
-)
-
 func (vox *Voxels) MarchRay(ray Ray) RayHit {
 	rayhit := RayHit{Hit: false}
 	origin, direc, tmax := ray.Origin, ray.Dir, ray.Tmax

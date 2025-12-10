@@ -208,7 +208,7 @@ func GetOctantCoords(pos, center Vec3i) Vec3i {
 	return Vec3(x, y, z)
 }
 
-func (tw *TreeWalker) CacheMarchRay(ray Ray, data MarchData) RayHit {
+func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	rayhit := RayHit{Hit: false}
 
 	// Descend into the lowest (and smallest) part of the tree
@@ -230,7 +230,7 @@ func (tw *TreeWalker) CacheMarchRay(ray Ray, data MarchData) RayHit {
 	// Make the DDA jump larger based on the current box size
 	data.ScaleToBox(tw.node.Box, ray)
 	data.step()
-	return tw.CacheMarchRay(ray, data)
+	return tw.StateMarchRay(ray, data)
 }
 
 // Doubly linked octant node
@@ -323,7 +323,7 @@ func (bt *Octree) MarchRay(ray Ray) RayHit {
 	walker := TreeWalkerInit(bt)
 	marchdata := MarchDataInit(ray)
 
-	return walker.CacheMarchRay(ray, marchdata)
+	return walker.StateMarchRay(ray, marchdata)
 }
 
 type Voxel struct {
@@ -335,8 +335,8 @@ func VoxelInit() Voxel {
 	return Voxel{Present: false, Color: [3]byte{0, 0, 0}}
 }
 
-type MarchWithCache interface {
-	CacheMarchRay(ray Ray, data MarchData) RayHit
+type StateMachineMarch interface {
+	StateMarchRay(ray Ray, data MarchData) RayHit
 }
 
 // func (node *TreeNode) MarchRay(ray Ray) RayHit {

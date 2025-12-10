@@ -117,7 +117,7 @@ func (cam *Camera) RenderVoxels(vtree *vxl.Octree, pix *Pixels) {
 					if hit.Hit {
 						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
-						shadedintensity := te.Vec3Splat(1.0)
+						shadedintensity := te.Vec3Splat(0.8) // Make it a little less bright
 
 						// // Make sure that the minimum brightness even in complete shadow is 5%
 						shadedcolor := shadedintensity.ComponentMax(0.05).MulComponent(color).ComponentMin(255.0)
