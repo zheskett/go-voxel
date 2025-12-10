@@ -23,7 +23,7 @@ type Engine struct {
 func (eng *Engine) UpdateInputs() {
 	eng.Framedata.Update()
 	eng.Framedata.ReportFps()
-	render.UpdateCamInputGLFW(&eng.Camera, eng.Window, &eng.Framedata)
+	eng.Camera.UpdateCamInput(&eng.Framedata)
 }
 
 func (eng *Engine) UpdateRender() {
@@ -40,15 +40,35 @@ func (eng *Engine) CheckExit() {
 	}
 }
 
+func (eng *Engine) SetCallbacks() {
+	eng.SetScrollCallback()
+	eng.SetMouseCallback()
+	eng.SetKeyCallback()
+}
+
 func (eng *Engine) SetScrollCallback() {
-	eng.Window.SetScrollCallback(func(w *glfw.Window, _ float64, yoff float64) {
+	eng.Window.SetScrollCallback(func(_ *glfw.Window, _ float64, yoff float64) {
 		eng.Camera.Movespeed = max(eng.Camera.Movespeed+float32(yoff)*moveSpeedInc, 0)
 	})
 }
 
 func (eng *Engine) SetMouseCallback() {
-	eng.Window.SetCursorPosCallback(func(w *glfw.Window, xpos float64, ypos float64) {
+	eng.Window.SetCursorPosCallback(func(_ *glfw.Window, xpos float64, ypos float64) {
 		dx, dy := eng.Framedata.GetMouseDelta(xpos, ypos)
 		eng.Camera.UpdateRotationFPS(dy, dx)
+	})
+}
+
+func (eng *Engine) SetKeyCallback() {
+	eng.Window.SetKeyCallback(func(win *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
+		switch action {
+		case glfw.Press:
+			eng.Framedata.Keys[key] = true
+		case glfw.Release:
+			eng.Framedata.Keys[key] = false
+		}
+		if key == glfw.KeyT {
+			win.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+		}
 	})
 }

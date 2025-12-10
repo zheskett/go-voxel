@@ -5,6 +5,7 @@ import (
 
 	"github.com/zheskett/go-voxel/internal/engine"
 	ren "github.com/zheskett/go-voxel/internal/render"
+	"github.com/zheskett/go-voxel/internal/tensor"
 	"github.com/zheskett/go-voxel/internal/voxel"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
@@ -18,7 +19,7 @@ func init() {
 func main() {
 	renderDist := float32(256.0)
 	size := 256
-	tree := voxel.BrickTreeInit(size, size, size)
+	tree := voxel.OctreeInit(size, size, size)
 	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()
 	cam.Movespeed = 20
@@ -26,6 +27,7 @@ func main() {
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
 	cam.RenderDistance = renderDist
+	cam.Pos = tensor.Vec3(10, 10, 10)
 
 	engine := engine.Engine{}
 	engine.Renderer = rm
@@ -33,8 +35,7 @@ func main() {
 	engine.Camera = cam
 	engine.Voxtree = tree
 	engine.Framedata = ren.FrameDataInit()
-	engine.SetScrollCallback()
-	engine.SetMouseCallback()
+	engine.SetCallbacks()
 
 	VoxelDebugSceneSmall(&engine.Voxtree)
 

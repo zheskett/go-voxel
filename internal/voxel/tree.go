@@ -59,6 +59,10 @@ func (box *Box) size() Vec3i {
 	return box.high.Sub(box.low)
 }
 
+func (box *Box) sizeScalar() int {
+	return box.high.X - box.low.X
+}
+
 func (box *Box) isUnit() bool {
 	size := box.size()
 	return size.X == 1 && size.Y == 1 && size.Z == 1
@@ -152,7 +156,7 @@ func (tw *TreeWalker) Ascend() {
 	tw.level -= 1
 
 	if tw.level < 0 {
-		panic("error descending tree")
+		panic("error ascending tree")
 	}
 }
 
@@ -169,24 +173,22 @@ func (tw *TreeWalker) Descend(x, y, z int) {
 
 func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 	pos := Vec3(x, y, z)
-	// If the current node doesn't surround our point, ascend and try again
-	if !tw.node.Box.surrounds(pos) {
+
+	for !tw.node.Box.surrounds(pos) {
+		if tw.node.IsRoot() {
+			return
+		}
 		tw.Ascend()
-		tw.GotoAbsolute(x, y, z)
 	}
 
-	// Need someway to keep descending until we hit a leaf/empty cell that is the lowest container
-	if tw.node.IsStem() {
+	for tw.node.IsStem() {
 		center := tw.node.Box.center()
-		node := tw.GetOctantCoords(pos, center)
-		tw.Descend(node.X, node.Y, node.Z)
-		tw.GotoAbsolute(x, y, z)
+		oct := GetOctantCoords(pos, center)
+		tw.Descend(oct.X, oct.Y, oct.Z)
 	}
-
-	// Otherwise, it is empty or a brick and is the smallest possible container
 }
 
-func (tw *TreeWalker) GetOctantCoords(pos, center Vec3i) Vec3i {
+func GetOctantCoords(pos, center Vec3i) Vec3i {
 	var x, y, z int
 	if pos.X < center.X {
 		x = 0
@@ -204,6 +206,31 @@ func (tw *TreeWalker) GetOctantCoords(pos, center Vec3i) Vec3i {
 		z = 1
 	}
 	return Vec3(x, y, z)
+}
+
+func (tw *TreeWalker) CacheMarchRay(ray Ray, data MarchData) RayHit {
+	rayhit := RayHit{Hit: false}
+
+	// Descend into the lowest (and smallest) part of the tree
+	tw.GotoAbsolute(data.Pos.X, data.Pos.Y, data.Pos.Z)
+
+	// Checks to make sure there isn't infinite recursion
+	if !tw.node.Box.surrounds(data.Pos) || data.Time > ray.Tmax {
+		return rayhit
+	}
+
+	// If we are in a voxel-containing node, we hit
+	if tw.node.Voxel.Present {
+		rayhit.Hit = true
+		rayhit.Time = data.Time
+		rayhit.Color = tw.node.Voxel.Color
+		return rayhit
+	}
+
+	// Make the DDA jump larger based on the current box size
+	data.ScaleToBox(tw.node.Box, ray)
+	data.step()
+	return tw.CacheMarchRay(ray, data)
 }
 
 // Doubly linked octant node
@@ -247,7 +274,7 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 	}
 
 	// There is no brick, but one can be directly created
-	if node.IsEmpty() && node.Box.isUnit() {
+	if node.Box.isUnit() {
 		node.Voxel.Present = true
 		node.Voxel.Color = [3]byte{r, g, b}
 		return true
@@ -258,13 +285,9 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 		node.subdivide()
 	}
 
-	for i := range 8 {
-		if node.Leaves[i].RecursiveInsert(x, y, z, r, g, b) {
-			return true
-		}
-	}
-
-	return false
+	octantcoords := GetOctantCoords(pos, node.Box.center())
+	linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
+	return node.Leaves[linear].RecursiveInsert(x, y, z, r, g, b)
 }
 
 func (node *TreeNode) subdivide() {
@@ -275,50 +298,15 @@ func (node *TreeNode) subdivide() {
 	}
 }
 
-func (node *TreeNode) MarchRay(ray Ray) RayHit {
-	rayhit := RayHit{Hit: false}
-
-	tmin, tmax := node.Box.RayIntersection(ray)
-	if tmax < tmin || tmin > ray.Tmax {
-		return rayhit // Never hits the bounding box
-	}
-
-	if node.Voxel.Present {
-		rayhit.Hit = true
-		rayhit.Time = tmin
-		rayhit.Color = node.Voxel.Color
-		return rayhit
-	}
-
-	if node.IsStem() {
-		closesthit := RayHit{Hit: false}
-		closesttime := ray.Tmax
-
-		for i := range 8 {
-			if node.Leaves[i] != nil {
-				hit := node.Leaves[i].MarchRay(ray)
-				if hit.Hit && hit.Time < closesttime {
-					closesthit = hit
-					closesttime = hit.Time
-				}
-			}
-		}
-
-		return closesthit
-	}
-
-	return rayhit
-}
-
 type Octree struct {
 	Root TreeNode
 }
 
-func BrickTreeInit(x, y, z int) Octree {
+func OctreeInit(x, y, z int) Octree {
 	// Currently, the whole tree is 'lopsided' to one side and not centered around zero
 	// to allow for direct translation from the array storage without coordinate system
 	// transformations
-	return Octree{TreeNodeInit(BoxInit(0, 0, 0, x, y, z), nil)}
+	return Octree{TreeNodeInit(BoxInit(0, 0, 0, x, y, z), nil)} // Root has no stem
 }
 
 func (bt *Octree) Insert(x, y, z int, r, g, b byte) bool {
@@ -327,7 +315,15 @@ func (bt *Octree) Insert(x, y, z int, r, g, b byte) bool {
 
 // Entry point for sending a ray into the tree
 func (bt *Octree) MarchRay(ray Ray) RayHit {
-	return bt.Root.MarchRay(ray)
+	tmin, tmax := bt.Root.Box.RayIntersection(ray)
+	if tmin > tmax || tmin > ray.Tmax {
+		return RayHit{Hit: false} // We never even hit the tree
+	}
+
+	walker := TreeWalkerInit(bt)
+	marchdata := MarchDataInit(ray)
+
+	return walker.CacheMarchRay(ray, marchdata)
 }
 
 type Voxel struct {
@@ -338,6 +334,45 @@ type Voxel struct {
 func VoxelInit() Voxel {
 	return Voxel{Present: false, Color: [3]byte{0, 0, 0}}
 }
+
+type MarchWithCache interface {
+	CacheMarchRay(ray Ray, data MarchData) RayHit
+}
+
+// func (node *TreeNode) MarchRay(ray Ray) RayHit {
+// 	rayhit := RayHit{Hit: false}
+
+// 	tmin, tmax := node.Box.RayIntersection(ray)
+// 	if tmax < tmin || tmin > ray.Tmax {
+// 		return rayhit // Never hits the bounding box
+// 	}
+
+// 	if node.Voxel.Present {
+// 		rayhit.Hit = true
+// 		rayhit.Time = tmin
+// 		rayhit.Color = node.Voxel.Color
+// 		return rayhit
+// 	}
+
+// 	if node.IsStem() {
+// 		closesthit := RayHit{Hit: false}
+// 		closesttime := ray.Tmax
+
+// 		for i := range 8 {
+// 			if node.Leaves[i] != nil {
+// 				hit := node.Leaves[i].MarchRay(ray)
+// 				if hit.Hit && hit.Time < closesttime {
+// 					closesthit = hit
+// 					closesttime = hit.Time
+// 				}
+// 			}
+// 		}
+
+// 		return closesthit
+// 	}
+
+// 	return rayhit
+// }
 
 // Get rid of all this to make debugging easier, this is a really optimization but
 // it is too confusing for me right now

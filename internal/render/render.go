@@ -36,11 +36,12 @@ type FrameData struct {
 	Previous time.Time
 	Deltat   float32
 	Tick     uint
+	Keys     map[glfw.Key]bool
 	mouse    tensor.Vector2
 }
 
 func FrameDataInit() FrameData {
-	return FrameData{Previous: time.Now()}
+	return FrameData{Previous: time.Now(), Keys: make(map[glfw.Key]bool)}
 }
 
 func (data *FrameData) Update() {

@@ -105,3 +105,54 @@ func MarchDataInit(ray Ray) MarchData {
 		Side:  none,
 	}
 }
+
+func (march *MarchData) step() {
+	if march.Timev.X < march.Timev.Y {
+		if march.Timev.X < march.Timev.Z {
+			march.Pos.X += march.Step.X
+			march.Time = march.Timev.X
+			march.Timev.X += march.Inv.X
+			march.Side = axisX
+		} else {
+			march.Pos.Z += march.Step.Z
+			march.Time = march.Timev.Z
+			march.Timev.Z += march.Inv.Z
+			march.Side = axisZ
+		}
+	} else {
+		if march.Timev.Y < march.Timev.Z {
+			march.Pos.Y += march.Step.Y
+			march.Time = march.Timev.Y
+			march.Timev.Y += march.Inv.Y
+			march.Side = axisY
+		} else {
+			march.Pos.Z += march.Step.Z
+			march.Time = march.Timev.Z
+			march.Timev.Z += march.Inv.Z
+			march.Side = axisZ
+		}
+	}
+}
+
+func (march *MarchData) ScaleToBox(box Box, ray Ray) {
+	size := box.sizeScalar()
+	march.Step = march.Step.Mul(size)
+	pos := ray.Origin.Add(ray.Dir.Mul(march.Time))
+	high := box.high.AsVec3f()
+	low := box.low.AsVec3f()
+	if march.Step.X > 0 {
+		march.Timev.X = march.Time + (high.X-pos.X)*march.Inv.X
+	} else {
+		march.Timev.X = march.Time + (pos.X-low.X)*march.Inv.X
+	}
+	if march.Step.Y > 0 {
+		march.Timev.Y = march.Time + (high.Y-pos.Y)*march.Inv.Y
+	} else {
+		march.Timev.Y = march.Time + (pos.Y-low.Y)*march.Inv.Y
+	}
+	if march.Step.Z > 0 {
+		march.Timev.Z = march.Time + (high.Z-pos.Z)*march.Inv.Z
+	} else {
+		march.Timev.Z = march.Time + (pos.Z-low.Z)*march.Inv.Z
+	}
+}
