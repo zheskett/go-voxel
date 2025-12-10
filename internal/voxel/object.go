@@ -31,7 +31,7 @@ const (
 )
 
 const (
-	setChanSize = 1000
+	setChanSize = 100
 )
 
 var (
@@ -123,7 +123,7 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 
 	imgColor := clr.RGBA{color[0], color[1], color[2], 0xff}
 	vObj := VoxelObj{X, Y, Z, make(map[[3]int16]byte), voxparse.VoxPalette{clr.RGBA{0, 0, 0, 0}, imgColor}}
-	setChan := make(chan [3]int16, setChanSize)
+	setChan := make(chan [][3]int16, setChanSize)
 
 	var wg sync.WaitGroup
 	wg.Go(func() { calcVertSet(setChan, obj, boundRad, vLen, X, Y, Z) }) // S_v
@@ -135,8 +135,10 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 		close(setChan)
 	}()
 
-	for idx := range setChan {
-		vObj.Voxels[idx] = 1
+	for voxels := range setChan {
+		for _, idx := range voxels {
+			vObj.Voxels[idx] = 1
+		}
 	}
 
 	return vObj, nil
@@ -177,25 +179,29 @@ func (vObj *VoxelObj) Squash() {
 	vObj.Voxels = newVoxels
 }
 
-func calcVertSet(setChan chan<- [3]int16, obj parser.Obj, boundRad float32, vLen float32, X, Y, Z int16) {
+func calcVertSet(setChan chan<- [][3]int16, obj parser.Obj, boundRad float32, vLen float32, X, Y, Z int16) {
 	// All voxels whose voxel centers fall inside R_c are added to S_v
+	found := [][3]int16{}
 	for _, v := range obj.Vertices {
 		cX, cY, cZ := idxPos(v, X, Y, Z, vLen)
 		for i := int16(-1); i <= 1; i++ {
 			for j := int16(-1); j <= 1; j++ {
 				for k := int16(-1); k <= 1; k++ {
 					if insideSphere(cX+i, cY+j, cZ+k, boundRad, v, X, Y, Z, vLen) {
-						setChan <- [3]int16{cX + i, cY + j, cZ + k}
+						found = append(found, [3]int16{cX + i, cY + j, cZ + k})
 					}
 				}
 			}
 		}
 	}
+
+	setChan <- found
 }
 
-func calcEdgeSet(setChan chan<- [3]int16, obj parser.Obj, boundRad, vLen float32, X, Y, Z int16) {
+func calcEdgeSet(setChan chan<- [][3]int16, obj parser.Obj, boundRad, vLen float32, X, Y, Z int16) {
 	// All voxels whose voxel center fall inside a cylinder with radius R_c
 	// and length L, where L is the length of the edge, are added to S_e
+	found := [][3]int16{}
 	for _, e := range obj.Edges {
 		v1, v2 := obj.Vertices[e[0]], obj.Vertices[e[1]]
 		stepVec := v2.Sub(v1).Normalized().Mul(vLen * 0.5)
@@ -207,16 +213,18 @@ func calcEdgeSet(setChan chan<- [3]int16, obj parser.Obj, boundRad, vLen float32
 				for j := int16(-1); j <= 1; j++ {
 					for k := int16(-1); k <= 1; k++ {
 						if insideCylinder(cX+i, cY+j, cZ+k, boundRad, v1, v2, X, Y, Z, vLen) {
-							setChan <- [3]int16{cX + i, cY + j, cZ + k}
+							found = append(found, [3]int16{cX + i, cY + j, cZ + k})
 						}
 					}
 				}
 			}
 		}
 	}
+
+	setChan <- found
 }
 
-func calcBodySet(setChan chan<- [3]int16, obj parser.Obj, cd ConnectivityDistance, vLen float32, X, Y, Z int16) {
+func calcBodySet(setChan chan<- [][3]int16, obj parser.Obj, cd ConnectivityDistance, vLen float32, X, Y, Z int16) {
 	// All voxels who are inside planes G and H and inside edge planes E1 - E3 are added to S_f
 	invSqrt3 := 1.0 / math32.Sqrt(3.0)
 	sqrt3 := math32.Sqrt(3.0)
@@ -224,6 +232,7 @@ func calcBodySet(setChan chan<- [3]int16, obj parser.Obj, cd ConnectivityDistanc
 	faceChan := make(chan [3]int, cpus)
 	for range cpus {
 		wg.Go(func() {
+			found := [][3]int16{}
 			for f := range faceChan {
 				v1, v2, v3 := obj.Vertices[f[0]], obj.Vertices[f[1]], obj.Vertices[f[2]]
 				facePlane := plane{}
@@ -267,12 +276,13 @@ func calcBodySet(setChan chan<- [3]int16, obj parser.Obj, cd ConnectivityDistanc
 						for z := zMin; z <= zMax; z++ {
 							if betweenPlanes(x, y, z, facePlane, t, X, Y, Z, vLen) &&
 								insidePlaneTriangle(x, y, z, e1, e2, e3, X, Y, Z, vLen) {
-								setChan <- [3]int16{x, y, z}
+								found = append(found, [3]int16{x, y, z})
 							}
 						}
 					}
 				}
 			}
+			setChan <- found
 		})
 	}
 
