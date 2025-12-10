@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: MIT
 
 // Package voxparse provides the ability to parse .vox files with the Parse() method.
 // Information about the vox file format can be found here: https://paulbourke.net/dataformats/vox/
