@@ -20,6 +20,23 @@ func main() {
 	renderDist := float32(256.0)
 	size := 256
 	tree := voxel.OctreeInit(size, size, size)
+	var scene int
+	fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, 4 for .vox objects, anything else for small scene\n")
+	fmt.Scanln(&scene)
+	switch scene {
+	case 1:
+		scenes.VoxelDebugSceneBig(&vox)
+	case 2:
+		scenes.VoxelDebugEmptyScene(&vox)
+	case 3:
+		scenes.VoxelDebugSceneHugeBunny(&vox)
+		renderDist = 560.0
+	case 4:
+		scenes.VoxelDebugSceneTrees(&vox)
+		renderDist = 560.0
+	default:
+		scenes.VoxelDebugSceneSmall(&vox)
+	}
 	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()
 	cam.Movespeed = 20

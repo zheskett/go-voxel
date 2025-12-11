@@ -38,18 +38,22 @@ func VoxelDebugEmptyScene(vox *vxl.Voxels) {
 			vox.SetVoxel(j, i, vox.Z-1, 200, 200, 200)
 		}
 	}
-	obj, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T26, 200, [3]byte{220, 220, 220})
+	obj, err := vxl.VoxelizePath("assets/bunny.obj", false, true, false, vxl.T26, 100, [3]byte{220, 220, 220})
 	if err != nil {
 		panic(err)
 	}
-	obj.Flip(false, true, false)
-	vox.AddVoxelObj(obj, vox.X-120, 10, vox.Z-120)
-	cow, err := vxl.VoxelizePath("assets/cow.obj", vxl.T6, 165, [3]byte{160, 82, 45})
+	vox.AddVoxelObj(obj, vox.X-120, 0, vox.Z-120)
+	cow, err := vxl.VoxelizePath("assets/cow.obj", false, true, false, vxl.T6, 160, [3]byte{160, 82, 45})
 	if err != nil {
 		panic(err)
 	}
-	cow.Flip(false, true, false)
-	vox.AddVoxelObj(cow, vox.X/4-35, 10, vox.Z/4-35)
+	vox.AddVoxelObj(cow, vox.X/4-35, 0, vox.Z/4-35)
+
+	tree, err := vxl.ConvertVoxPath("assets/PineFluffy.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	vox.AddVoxelObj(tree, 150, -30, 30)
 }
 
 // A small room with 3 colored lights and boxes everywhere
@@ -216,16 +220,113 @@ func VoxelDebugSceneHugeBunny(vox *vxl.Voxels) {
 		Position: te.Vec3(500, 32, 256),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
+	light5 := vxl.Light{
+		Position: te.Vec3(500, 256, 256),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light6 := vxl.Light{
+		Position: te.Vec3(256, 256, 256),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light7 := vxl.Light{
+		Position: te.Vec3(96, 32, 500),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
 	*vox = vxl.VoxelsInit(512, 512, 512)
-	vox.Lights = append(vox.Lights, light, light2, light3, light4)
+	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7)
 
 	// Bunny
-	bunny, err := vxl.VoxelizePath("assets/bunny.obj", vxl.T26, 1230, [3]byte{255, 255, 255})
+	bunny, err := vxl.VoxelizePath("assets/bunny.obj", false, true, false, vxl.T26, 512, [3]byte{255, 255, 255})
 	if err != nil {
 		panic(err)
 	}
 
-	bunny.Flip(false, true, false)
-	println(bunny.X, bunny.Y, bunny.Z)
 	vox.AddVoxelObj(bunny, 0, 0, 0)
+}
+
+func VoxelDebugSceneTrees(vox *vxl.Voxels) {
+	brightness := 30000
+	light := vxl.Light{
+		Position: te.Vec3(4, 2, 6),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 2)),
+	}
+	light2 := vxl.Light{
+		Position: te.Vec3(500, 32, 96),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light3 := vxl.Light{
+		Position: te.Vec3(500, 32, 500),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light4 := vxl.Light{
+		Position: te.Vec3(500, 32, 256),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light5 := vxl.Light{
+		Position: te.Vec3(256, 400, 256),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+	}
+	light6 := vxl.Light{
+		Position: te.Vec3(180, 200, 200),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 4)),
+	}
+	light7 := vxl.Light{
+		Position: te.Vec3(1, 140, 250),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
+	}
+	light8 := vxl.Light{
+		Position: te.Vec3(1, 140, 0),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
+	}
+	*vox = vxl.VoxelsInit(512, 512, 512)
+	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7, light8)
+
+	// Fall Tree
+	fallTree, err := vxl.ConvertVoxPath("assets/FallTree.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	fallTree.Squash()
+	vox.AddVoxelObj(fallTree, 0, 0, 0)
+
+	// PineFluffy
+	pine, err := vxl.ConvertVoxPath("assets/PineFluffy.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	pine.Squash()
+	vox.AddVoxelObj(pine, 200, 110, 200)
+
+	// Menger
+	menger, err := vxl.ConvertVoxPath("assets/menger.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	menger.Squash()
+	vox.AddVoxelObj(menger, 0, vox.Y-int(menger.Y)-100, 0)
+
+	// Monument
+	monu, err := vxl.ConvertVoxPath("assets/monu10.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	monu.Squash()
+	vox.AddVoxelObj(monu, 0, vox.Y-int(monu.Y)-250, 200)
+
+	// kloster
+	kloster, err := vxl.ConvertVoxPath("assets/kloster.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	kloster.Squash()
+	vox.AddVoxelObj(kloster, 300, vox.Y-int(kloster.Y)-250, 200)
+
+	// sponza
+	sponza, err := vxl.ConvertVoxPath("assets/sponza.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+
+	sponza.Squash()
+	vox.AddVoxelObj(sponza, 0, vox.Y-int(sponza.Y)-250, 0)
 }

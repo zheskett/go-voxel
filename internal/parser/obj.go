@@ -23,14 +23,16 @@ func (e ObjParseError) Error() string {
 
 // Contains information about an object
 type Obj struct {
-	Vertices []te.Vector3
-	Edges    [][2]int
-	Faces    [][3]int
+	Vertices    []te.Vector3
+	Edges       [][2]int
+	Faces       [][3]int
+	MaxVertsPos te.Vector3
 	// Don't use uv/normals (yet?)
 }
 
-// ParseObj returns an Obj from object file
-func ParseObj(path string) (Obj, error) {
+// ParseObj returns an Obj from object file.
+// flipX, flipY, and flipZ flip the object on the respective axis.
+func ParseObj(path string, flipX, flipY, flipZ bool) (Obj, error) {
 	obj := Obj{}
 	edgeSet := make(map[[2]int]bool)
 
@@ -42,7 +44,8 @@ func ParseObj(path string) (Obj, error) {
 
 	scanner := bufio.NewScanner(file)
 	lineNum := 1
-	absLargestVertPos := float32(0)
+	maxVertsPos := te.Vec3Splat(math32.Inf(-1))
+	minVertsPos := te.Vec3Splat(math32.Inf(1))
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
@@ -53,11 +56,12 @@ func ParseObj(path string) (Obj, error) {
 		switch line[:2] {
 		case "v ":
 			vert, err := parseVertex(line)
-			absLargestVertPos = math32.Max(absLargestVertPos, math32.Max(math32.Abs(vert.X),
-				math32.Max(math32.Abs(vert.Y), math32.Abs(vert.Z))))
 			if err != nil {
 				return obj, ObjParseError{lineNum, err}
 			}
+			maxVertsPos = te.Vec3(max(maxVertsPos.X, vert.X), max(maxVertsPos.Y, vert.Y), max(maxVertsPos.Z, vert.Z))
+			minVertsPos = te.Vec3(min(minVertsPos.X, vert.X), min(minVertsPos.Y, vert.Y), min(minVertsPos.Z, vert.Z))
+
 			obj.Vertices = append(obj.Vertices, vert)
 		case "f ":
 			faces, err := parseFace(line)
@@ -88,7 +92,7 @@ func ParseObj(path string) (Obj, error) {
 		}
 	}
 
-	obj.scale(absLargestVertPos)
+	obj.scale(maxVertsPos, minVertsPos, flipX, flipY, flipZ)
 	return obj, nil
 }
 
@@ -155,10 +159,29 @@ func parseFace(line string) ([][3]int, error) {
 	return faces, nil
 }
 
-// Scales the obj data so that the largest vert pos is at 1 (or -1)
-func (obj *Obj) scale(absLargestVertPos float32) {
-	scaleFactor := 1.0 / absLargestVertPos
-	for i := range obj.Vertices {
-		obj.Vertices[i] = obj.Vertices[i].Mul(scaleFactor)
+// Positions the obj data so that the origin is at the center of the object.
+// Scales the obj data so that the largest vert pos is at 1 (or -1).
+// flipX, flipY, and flipZ flip the object on the respective axis.
+func (obj *Obj) scale(maxVertsPos, minVertsPos te.Vector3, flipX, flipY, flipZ bool) {
+	flipVec := te.Vec3(1, 1, 1)
+	if flipX {
+		flipVec.X = -1
+	}
+	if flipY {
+		flipVec.Y = -1
+	}
+	if flipZ {
+		flipVec.Z = -1
+	}
+
+	offsetVec := maxVertsPos.Add(minVertsPos).Mul(0.5)
+	maxAbsPos := maxVertsPos.Sub(offsetVec).Max()
+
+	scaleFactor := 1.0 / maxAbsPos
+	obj.MaxVertsPos = maxVertsPos.Sub(offsetVec).Mul(scaleFactor).ComponentMin(1.0)
+
+	// Translate each point by the offset and scale
+	for i, v := range obj.Vertices {
+		obj.Vertices[i] = v.Sub(offsetVec).Mul(scaleFactor).MulComponent(flipVec).ComponentClamp(-1.0, 1.0)
 	}
 }
