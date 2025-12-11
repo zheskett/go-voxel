@@ -274,8 +274,12 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 		Position: te.Vec3(1, 140, 250),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
 	}
+	light8 := vxl.Light{
+		Position: te.Vec3(1, 140, 0),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
+	}
 	*vox = vxl.VoxelsInit(512, 512, 512)
-	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7)
+	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7, light8)
 
 	// Fall Tree
 	fallTree, err := vxl.ConvertVoxPath("assets/FallTree.vox", false, true, false)
@@ -316,4 +320,13 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 	}
 	kloster.Squash()
 	vox.AddVoxelObj(kloster, 300, vox.Y-int(kloster.Y)-250, 200)
+
+	// sponza
+	sponza, err := vxl.ConvertVoxPath("assets/sponza.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+
+	sponza.Squash()
+	vox.AddVoxelObj(sponza, 0, vox.Y-int(sponza.Y)-250, 0)
 }

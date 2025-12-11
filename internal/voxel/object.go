@@ -345,7 +345,7 @@ func betweenPlanes(x, y, z int16, facePlane plane, t float32, X, Y, Z int16, vLe
 
 	vPos := toPos(x, y, z, vLen, X, Y, Z)
 	distance := facePlane.normVec.Dot(vPos) + facePlane.d
-	return math32.Abs(distance) <= t
+	return -t <= distance && distance <= t
 }
 
 func insidePlaneTriangle(x, y, z int16, e1, e2, e3 plane, X, Y, Z int16, vLen float32) bool {
