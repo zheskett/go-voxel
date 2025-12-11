@@ -38,7 +38,7 @@ func main() {
 	ray = voxel.Ray{Origin: tensor.Vec3(-5, 0, 0), Dir: tensor.Vec3(1, 0, 0), Tmax: 10}
 	t0, t1 := aabb.RayIntersection(ray)
 	if t0 > t1 {
-		panic("dirct ray didn't hit")
+		panic("direct ray didn't hit")
 	}
 	ray.Dir = ray.Dir.Mul(-1)
 	t0, t1 = aabb.RayIntersection(ray)

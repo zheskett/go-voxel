@@ -40,7 +40,7 @@ func (v1 Vec3i) Mul(s int) Vec3i {
 	return Vec3(v1.X*s, v1.Y*s, v1.Z*s)
 }
 
-// Need to be careful becuase this is integer division
+// Need to be careful because this is integer division
 func (v1 Vec3i) Div(s int) Vec3i {
 	return Vec3(v1.X/s, v1.Y/s, v1.Z/s)
 }
