@@ -2,6 +2,7 @@
 package render
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/chewxy/math32"
@@ -101,6 +102,8 @@ func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ra
 
 func (cam *Camera) RenderVoxels(vtree *vxl.Octree, pix *Pixels) {
 	basis := CameraRayBasisInit(cam, pix)
+
+	fmt.Printf("%v, %v, %v", cam.Fvec, cam.Rvec, cam.Uvec)
 
 	threads := sync.WaitGroup{}
 	for thread := range RenderThreads {

@@ -43,12 +43,13 @@ type Marchable interface {
 }
 
 type MarchData struct {
-	Pos   Vec3i
-	Step  Vec3i
-	Inv   te.Vector3
-	Timev te.Vector3
-	Time  float32
-	Side  axis
+	Pos     Vec3i      // Current absolute integer position
+	Step    Vec3i      // Current integer step
+	Inv     te.Vector3 // Current inverse direction, used to step self.Timev
+	UnitInv te.Vector3 // Inverse ray direction on a unit grid -- shouldn't be changed
+	Timev   te.Vector3 // Time distance to each x, y, plane that we can step
+	Time    float32    // Total time of the current raymarch
+	Side    axis       // The voxel's side the last march stepped through
 }
 
 func MarchDataInit(ray Ray) MarchData {
@@ -107,11 +108,12 @@ func MarchDataInit(ray Ray) MarchData {
 	}
 
 	return MarchData{
-		Pos:   Vec3(x, y, z),
-		Step:  Vec3(stepx, stepy, stepz),
-		Inv:   te.Vec3(invx, invy, invz),
-		Timev: te.Vec3(timex, timey, timez),
-		Side:  none,
+		Pos:     Vec3(x, y, z),
+		Step:    Vec3(stepx, stepy, stepz),
+		Inv:     te.Vec3(invx, invy, invz),
+		UnitInv: te.Vec3(invx, invy, invz),
+		Timev:   te.Vec3(timex, timey, timez),
+		Side:    none,
 	}
 }
 
@@ -145,32 +147,29 @@ func (march *MarchData) step() {
 
 func (march *MarchData) ScaleToBox(box Box, ray Ray) {
 	size := float32(box.sizeScalar())
-
 	pos := ray.Origin.Add(ray.Dir.Mul(march.Time))
 	low := box.low.AsVec3f()
 	high := box.high.AsVec3f()
-
-	march.Inv = march.Inv.Normalized()
+	march.Inv = march.UnitInv.Mul(size)
 	if march.Step.X > 0 {
-		march.Timev.X = march.Time + (high.X-pos.X)*march.Inv.X
+		march.Timev.X = march.Time + (high.X-pos.X)*march.UnitInv.X
 		march.Step.X = box.high.X - march.Pos.X
 	} else {
-		march.Timev.X = march.Time + (pos.X-low.X)*march.Inv.X
+		march.Timev.X = march.Time + (pos.X-low.X)*march.UnitInv.X
 		march.Step.X = box.low.X - march.Pos.X - 1
 	}
 	if march.Step.Y > 0 {
-		march.Timev.Y = march.Time + (high.Y-pos.Y)*march.Inv.Y
+		march.Timev.Y = march.Time + (high.Y-pos.Y)*march.UnitInv.Y
 		march.Step.Y = box.high.Y - march.Pos.Y
 	} else {
-		march.Timev.Y = march.Time + (pos.Y-low.Y)*march.Inv.Y
+		march.Timev.Y = march.Time + (pos.Y-low.Y)*march.UnitInv.Y
 		march.Step.Y = box.low.Y - march.Pos.Y - 1
 	}
 	if march.Step.Z > 0 {
-		march.Timev.Z = march.Time + (high.Z-pos.Z)*march.Inv.Z
+		march.Timev.Z = march.Time + (high.Z-pos.Z)*march.UnitInv.Z
 		march.Step.Z = box.high.Z - march.Pos.Z
 	} else {
-		march.Timev.Z = march.Time + (pos.Z-low.Z)*march.Inv.Z
+		march.Timev.Z = march.Time + (pos.Z-low.Z)*march.UnitInv.Z
 		march.Step.Z = box.low.Z - march.Pos.Z - 1
 	}
-	march.Inv = march.Inv.Mul(size)
 }
