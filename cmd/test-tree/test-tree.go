@@ -9,7 +9,7 @@ import (
 
 func main() {
 	size := 128
-	tree := voxel.OctreeInit(size, size, size)
+	tree := voxel.OctreeInit(size)
 	if tree.Root.IsStem() {
 		panic("should have all nil leaves")
 	}
@@ -25,7 +25,7 @@ func main() {
 	fmt.Printf("max tree depth: %d\n", depth)
 	fmt.Printf("voxels in the tree: %d\n", voxels)
 
-	tree = voxel.OctreeInit(size, size, size)
+	tree = voxel.OctreeInit(size)
 	tree.Insert(10, 10, 10, 0, 255, 255)
 	ray := voxel.Ray{Origin: tensor.Vec3(1, 1, 1), Dir: tensor.Vec3(1, 1, 1).Normalized(), Tmax: 1e4}
 	hit := tree.MarchRay(ray)
@@ -34,7 +34,7 @@ func main() {
 		panic("didn't hit tree")
 	}
 
-	aabb := voxel.BoxInit(-1, -1, -1, 1, 1, 1)
+	aabb := voxel.BoxInit(-1, -1, -1, 2)
 	ray = voxel.Ray{Origin: tensor.Vec3(-5, 0, 0), Dir: tensor.Vec3(1, 0, 0), Tmax: 10}
 	t0, t1 := aabb.RayIntersection(ray)
 	if t0 > t1 {

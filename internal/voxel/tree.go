@@ -20,6 +20,10 @@ func Vec3(x, y, z int) Vec3i {
 	return Vec3i{x, y, z}
 }
 
+func Vec3Splat(c int) Vec3i {
+	return Vec3(c, c, c)
+}
+
 func (v1 Vec3i) AsArray() [3]int {
 	return [3]int{v1.X, v1.Y, v1.Z}
 }
@@ -47,35 +51,31 @@ func (v1 Vec3i) Div(s int) Vec3i {
 
 // Axis Aligned Bounding Box
 type Box struct {
-	low  Vec3i // This storage method can be simplified this is just the easiest
-	high Vec3i
+	low  Vec3i // Stores the low position of a cubic bounding box
+	size int   // The full side lenghts of the cubic bounding box
 }
 
-func BoxInit(lx, ly, lz int, hx, hy, hz int) Box {
-	return Box{low: Vec3(lx, ly, lz), high: Vec3(hx, hy, hz)}
-}
-
-func (box *Box) size() Vec3i {
-	return box.high.Sub(box.low)
-}
-
-func (box *Box) sizeScalar() int {
-	return box.high.X - box.low.X
+func BoxInit(lx, ly, lz int, size int) Box {
+	return Box{low: Vec3(lx, ly, lz), size: size}
 }
 
 func (box *Box) isUnit() bool {
-	size := box.size()
-	return size.X == 1 && size.Y == 1 && size.Z == 1
+	return box.size == 1
 }
 
 func (box *Box) center() Vec3i {
-	return box.low.Add(box.high).Div(2)
+	return box.low.Add(Vec3Splat(box.size / 2))
+}
+
+func (box *Box) high() Vec3i {
+	return box.low.Add(Vec3Splat(box.size))
 }
 
 // Returns if a point is fully encased by the box. The convention we are using is [min, max)
 func (box *Box) surrounds(v Vec3i) bool {
+	high := box.high()
 	return v.X >= box.low.X && v.Y >= box.low.Y && v.Z >= box.low.Z &&
-		v.X < box.high.X && v.Y < box.high.Y && v.Z < box.high.Z
+		v.X < high.X && v.Y < high.Y && v.Z < high.Z
 }
 
 // Slab-method of AABB and ray intersection
@@ -85,7 +85,7 @@ func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 	dirs := ray.Dir.AsArray()
 	orig := ray.Origin.AsArray()
 	low := box.low.AsArray()
-	high := box.high.AsArray()
+	high := box.high().AsArray()
 
 	for i := range 3 {
 		if dirs[i] == 0.0 {
@@ -116,26 +116,26 @@ func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 }
 
 func (box *Box) subdivide() [8]Box {
-	low, high := box.low.AsArray(), box.high.AsArray()
+	low, mid := box.low.AsArray(), box.center().AsArray()
 	lx, ly, lz := low[0], low[1], low[2]
-	hx, hy, hz := high[0], high[1], high[2]
-	mx, my, mz := (high[0]+low[0])/2, (high[1]+low[1])/2, (high[2]+low[2])/2
+	mx, my, mz := mid[0], mid[1], mid[2]
+	halfsize := box.size / 2
 
 	return [8]Box{
-		BoxInit(lx, ly, lz, mx, my, mz), // 000
-		BoxInit(lx, ly, mz, mx, my, hz), // 001
-		BoxInit(lx, my, lz, mx, hy, mz), // 010
-		BoxInit(lx, my, mz, mx, hy, hz), // 011
-		BoxInit(mx, ly, lz, hx, my, mz), // 100
-		BoxInit(mx, ly, mz, hx, my, hz), // 101
-		BoxInit(mx, my, lz, hx, hy, mz), // 110
-		BoxInit(mx, my, mz, hx, hy, hz), // 111
+		BoxInit(lx, ly, lz, halfsize), // 000
+		BoxInit(lx, ly, mz, halfsize), // 001
+		BoxInit(lx, my, lz, halfsize), // 010
+		BoxInit(lx, my, mz, halfsize), // 011
+		BoxInit(mx, ly, lz, halfsize), // 100
+		BoxInit(mx, ly, mz, halfsize), // 101
+		BoxInit(mx, my, lz, halfsize), // 110
+		BoxInit(mx, my, mz, halfsize), // 111
 	}
 }
 
 // Returns the linear index into the Box assuming relative coordinates [0, 2)
 func (box *Box) index(x, y, z int) int {
-	if x > 1 || y > 1 || z > 1 {
+	if x > 1 || y > 1 || z > 1 || x < 0 || y < 0 || z < 0 {
 		panic("using relative indexing")
 	}
 	return (x << 2) | (y << 1) | z
@@ -174,6 +174,7 @@ func (tw *TreeWalker) Descend(x, y, z int) {
 func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 	pos := Vec3(x, y, z)
 
+	// Climb up until the node surrounds the desired position
 	for !tw.node.Box.surrounds(pos) {
 		if tw.node.IsRoot() {
 			return
@@ -181,6 +182,7 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 		tw.Ascend()
 	}
 
+	// Continue descending down into the smallest node that surrounds the position
 	for tw.node.IsStem() {
 		center := tw.node.Box.center()
 		oct := GetOctantCoords(pos, center)
@@ -302,11 +304,11 @@ type Octree struct {
 	Root TreeNode
 }
 
-func OctreeInit(x, y, z int) Octree {
+func OctreeInit(size int) Octree {
 	// Currently, the whole tree is 'lopsided' to one side and not centered around zero
 	// to allow for direct translation from the array storage without coordinate system
 	// transformations
-	return Octree{TreeNodeInit(BoxInit(0, 0, 0, x, y, z), nil)} // Root has no stem
+	return Octree{TreeNodeInit(BoxInit(0, 0, 0, size), nil)} // Root has no stem
 }
 
 func (bt *Octree) Insert(x, y, z int, r, g, b byte) bool {
