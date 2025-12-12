@@ -29,6 +29,7 @@ type Ray struct {
 	Tmax   float32
 }
 
+// Returned information after a ray is cast into the scene
 type RayHit struct {
 	Hit      bool
 	Time     float32
@@ -38,18 +39,29 @@ type RayHit struct {
 	Normal   te.Vector3
 }
 
+// The default method that should be used anytime a raycast is made
 type Marchable interface {
 	MarchRay(ray Ray) RayHit
 }
 
+// The sort of 'internal' marching method. Shouldn't be called directly for
+// marching rays, rather any time that can be marched should implement this
+type StateMachineMarch interface {
+	StateMarchRay(ray Ray, data MarchData) RayHit
+}
+
 type MarchData struct {
-	Pos     Vec3i      // Current absolute integer position
+	// These two fields are invariant -- calculated from the ray and should never be mutated
 	Step    Vec3i      // Current integer step
-	Inv     te.Vector3 // Current inverse direction, used to step self.Timev
-	UnitInv te.Vector3 // Inverse ray direction on a unit grid -- shouldn't be changed
-	Timev   te.Vector3 // Time distance to each x, y, plane that we can step
-	Time    float32    // Total time of the current raymarch
-	Side    axis       // The voxel's side the last march stepped through
+	UnitInv te.Vector3 // Inverse ray direction on a unit grid
+
+	// These fields are all mutated in some way to allow dynamic DDA stepping
+	Pos   Vec3i      // Current absolute integer position
+	Inv   te.Vector3 // Current inverse direction, used to step self.Timev
+	Jump  Vec3i      // The jump size at the next step
+	Side  axis       // The voxel's side the last march stepped through
+	Time  float32    // Total time of the current raymarch
+	Timev te.Vector3 // Time distance to each x, y, z plane that we can step
 }
 
 func MarchDataInit(ray Ray) MarchData {
@@ -108,36 +120,38 @@ func MarchDataInit(ray Ray) MarchData {
 	}
 
 	return MarchData{
-		Pos:     Vec3(x, y, z),
 		Step:    Vec3(stepx, stepy, stepz),
-		Inv:     te.Vec3(invx, invy, invz),
 		UnitInv: te.Vec3(invx, invy, invz),
-		Timev:   te.Vec3(timex, timey, timez),
-		Side:    none,
+
+		Pos:   Vec3(x, y, z),
+		Inv:   te.Vec3(invx, invy, invz),
+		Jump:  Vec3(stepx, stepy, stepz),
+		Side:  none,
+		Timev: te.Vec3(timex, timey, timez),
 	}
 }
 
 func (march *MarchData) step() {
 	if march.Timev.X < march.Timev.Y {
 		if march.Timev.X < march.Timev.Z {
-			march.Pos.X += march.Step.X
+			march.Pos.X += march.Jump.X
 			march.Time = march.Timev.X
 			march.Timev.X += march.Inv.X
 			march.Side = axisX
 		} else {
-			march.Pos.Z += march.Step.Z
+			march.Pos.Z += march.Jump.Z
 			march.Time = march.Timev.Z
 			march.Timev.Z += march.Inv.Z
 			march.Side = axisZ
 		}
 	} else {
 		if march.Timev.Y < march.Timev.Z {
-			march.Pos.Y += march.Step.Y
+			march.Pos.Y += march.Jump.Y
 			march.Time = march.Timev.Y
 			march.Timev.Y += march.Inv.Y
 			march.Side = axisY
 		} else {
-			march.Pos.Z += march.Step.Z
+			march.Pos.Z += march.Jump.Z
 			march.Time = march.Timev.Z
 			march.Timev.Z += march.Inv.Z
 			march.Side = axisZ
@@ -146,31 +160,33 @@ func (march *MarchData) step() {
 }
 
 func (march *MarchData) ScaleToBox(box Box, ray Ray) {
-	size := float32(box.size)
-	pos := ray.Origin.Add(ray.Dir.Mul(march.Time))
-	low := box.low.AsVec3f()
+	low := box.Low.AsVec3f()
 	high := box.high()
-	highf := box.high().AsVec3f()
-	march.Inv = march.UnitInv.Mul(size)
+	highf := high.AsVec3f()
+
+	march.Inv = march.UnitInv.Mul(float32(box.Size))
+
 	if march.Step.X > 0 {
-		march.Timev.X = march.Time + (highf.X-pos.X)*march.UnitInv.X
-		march.Step.X = high.X - march.Pos.X
+		march.Timev.X = (highf.X - ray.Origin.X) * march.UnitInv.X
+		march.Jump.X = high.X - march.Pos.X
 	} else {
-		march.Timev.X = march.Time + (pos.X-low.X)*march.UnitInv.X
-		march.Step.X = box.low.X - march.Pos.X - 1
+		march.Timev.X = (ray.Origin.X - low.X) * march.UnitInv.X
+		march.Jump.X = box.Low.X - march.Pos.X - 1
 	}
+
 	if march.Step.Y > 0 {
-		march.Timev.Y = march.Time + (highf.Y-pos.Y)*march.UnitInv.Y
-		march.Step.Y = high.Y - march.Pos.Y
+		march.Timev.Y = (highf.Y - ray.Origin.Y) * march.UnitInv.Y
+		march.Jump.Y = high.Y - march.Pos.Y
 	} else {
-		march.Timev.Y = march.Time + (pos.Y-low.Y)*march.UnitInv.Y
-		march.Step.Y = box.low.Y - march.Pos.Y - 1
+		march.Timev.Y = (ray.Origin.Y - low.Y) * march.UnitInv.Y
+		march.Jump.Y = box.Low.Y - march.Pos.Y - 1
 	}
+
 	if march.Step.Z > 0 {
-		march.Timev.Z = march.Time + (highf.Z-pos.Z)*march.UnitInv.Z
-		march.Step.Z = high.Z - march.Pos.Z
+		march.Timev.Z = (highf.Z - ray.Origin.Z) * march.UnitInv.Z
+		march.Jump.Z = high.Z - march.Pos.Z
 	} else {
-		march.Timev.Z = march.Time + (pos.Z-low.Z)*march.UnitInv.Z
-		march.Step.Z = box.low.Z - march.Pos.Z - 1
+		march.Timev.Z = (ray.Origin.Z - low.Z) * march.UnitInv.Z
+		march.Jump.Z = box.Low.Z - march.Pos.Z - 1
 	}
 }

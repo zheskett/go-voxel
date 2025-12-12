@@ -62,7 +62,7 @@ func (bits *BitArray) Clear() {
 }
 
 // Just a point light
-type Light struct {
+type LightPoint struct {
 	Position te.Vector3
 	Color    te.Vector3 // Can have mag > 1 for a bright light
 }
@@ -84,7 +84,7 @@ type Voxels struct {
 	LightCached BitArray // Whether or not we already having lighting data for that frame
 	Lighting    []CachedLighting
 
-	Lights []Light // Shouldn't be in here probably, maybe in another larger structure holding all worlds stuff
+	Lights []LightPoint // Shouldn't be in here probably, maybe in another larger structure holding all worlds stuff
 }
 
 func VoxelsInit(x, y, z int) Voxels {
@@ -92,7 +92,7 @@ func VoxelsInit(x, y, z int) Voxels {
 	color := make([][3]byte, z*y*x)
 	lighting := make([]CachedLighting, z*y*x)
 	lightcache := BitArrayInit(z * y * x)
-	lights := make([]Light, 0)
+	lights := make([]LightPoint, 0)
 	for i := 0; i < z*y*x; i++ {
 		color[i] = [3]byte{0, 0, 0}
 	}
@@ -263,4 +263,17 @@ func (vox *Voxels) UpdateInputs(window *glfw.Window, pos te.Vector3, dir te.Vect
 		x, y, z := int(voxel.X), int(voxel.Y), int(voxel.Z)
 		vox.SetVoxel(x, y, z, 255, 255, 255)
 	}
+}
+
+// A directional light source which emulates a point light at infinity with no intensity falloff
+type DirLight struct {
+	Dir te.Vector3
+	Col te.Vector3 // Can NOT have mag > 1 for directional light
+}
+
+// Manager type for the state of the voxels
+type VoxelWorld struct {
+	Voxels Octree
+	Sun    DirLight
+	Lights []LightPoint
 }

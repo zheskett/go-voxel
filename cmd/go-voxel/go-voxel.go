@@ -18,7 +18,7 @@ func init() {
 
 func main() {
 	renderDist := float32(256.0)
-	size := 256
+	size := 128
 	tree := voxel.OctreeInit(size)
 	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()

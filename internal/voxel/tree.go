@@ -51,30 +51,30 @@ func (v1 Vec3i) Div(s int) Vec3i {
 
 // Axis Aligned Bounding Box
 type Box struct {
-	low  Vec3i // Stores the low position of a cubic bounding box
-	size int   // The full side lenghts of the cubic bounding box
+	Low  Vec3i // Stores the low position of a cubic bounding box
+	Size int   // The full side lenghts of the cubic bounding box
 }
 
 func BoxInit(lx, ly, lz int, size int) Box {
-	return Box{low: Vec3(lx, ly, lz), size: size}
+	return Box{Low: Vec3(lx, ly, lz), Size: size}
 }
 
 func (box *Box) isUnit() bool {
-	return box.size == 1
+	return box.Size == 1
 }
 
 func (box *Box) center() Vec3i {
-	return box.low.Add(Vec3Splat(box.size / 2))
+	return box.Low.Add(Vec3Splat(box.Size / 2))
 }
 
 func (box *Box) high() Vec3i {
-	return box.low.Add(Vec3Splat(box.size))
+	return box.Low.Add(Vec3Splat(box.Size))
 }
 
 // Returns if a point is fully encased by the box. The convention we are using is [min, max)
 func (box *Box) surrounds(v Vec3i) bool {
 	high := box.high()
-	return v.X >= box.low.X && v.Y >= box.low.Y && v.Z >= box.low.Z &&
+	return v.X >= box.Low.X && v.Y >= box.Low.Y && v.Z >= box.Low.Z &&
 		v.X < high.X && v.Y < high.Y && v.Z < high.Z
 }
 
@@ -84,7 +84,7 @@ func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 	tmax := ray.Tmax
 	dirs := ray.Dir.AsArray()
 	orig := ray.Origin.AsArray()
-	low := box.low.AsArray()
+	low := box.Low.AsArray()
 	high := box.high().AsArray()
 
 	for i := range 3 {
@@ -116,10 +116,10 @@ func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 }
 
 func (box *Box) subdivide() [8]Box {
-	low, mid := box.low.AsArray(), box.center().AsArray()
+	low, mid := box.Low.AsArray(), box.center().AsArray()
 	lx, ly, lz := low[0], low[1], low[2]
 	mx, my, mz := mid[0], mid[1], mid[2]
-	halfsize := box.size / 2
+	halfsize := box.Size / 2
 
 	return [8]Box{
 		BoxInit(lx, ly, lz, halfsize), // 000
@@ -142,7 +142,7 @@ func (box *Box) index(x, y, z int) int {
 }
 
 type TreeWalker struct {
-	node  *TreeNode
+	Node  *TreeNode
 	level int
 }
 
@@ -152,7 +152,7 @@ func TreeWalkerInit(tree *Octree) TreeWalker {
 
 // Climbs the walker to the closest upward stem
 func (tw *TreeWalker) Ascend() {
-	tw.node = tw.node.Stem
+	tw.Node = tw.Node.Stem
 	tw.level -= 1
 
 	if tw.level < 0 {
@@ -162,8 +162,8 @@ func (tw *TreeWalker) Ascend() {
 
 // Drops down a level into the relative indexed node
 func (tw *TreeWalker) Descend(x, y, z int) {
-	idx := tw.node.Box.index(x, y, z)
-	tw.node = tw.node.Leaves[idx]
+	idx := tw.Node.Box.index(x, y, z)
+	tw.Node = tw.Node.Leaves[idx]
 	tw.level += 1
 
 	if tw.level > 32 {
@@ -175,16 +175,16 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 	pos := Vec3(x, y, z)
 
 	// Climb up until the node surrounds the desired position
-	for !tw.node.Box.surrounds(pos) {
-		if tw.node.IsRoot() {
+	for !tw.Node.Box.surrounds(pos) {
+		if tw.Node.IsRoot() {
 			return
 		}
 		tw.Ascend()
 	}
 
 	// Continue descending down into the smallest node that surrounds the position
-	for tw.node.IsStem() {
-		center := tw.node.Box.center()
+	for tw.Node.IsStem() {
+		center := tw.Node.Box.center()
 		oct := GetOctantCoords(pos, center)
 		tw.Descend(oct.X, oct.Y, oct.Z)
 	}
@@ -217,20 +217,20 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	tw.GotoAbsolute(data.Pos.X, data.Pos.Y, data.Pos.Z)
 
 	// Checks to make sure there isn't infinite recursion
-	if !tw.node.Box.surrounds(data.Pos) || data.Time > ray.Tmax {
+	if !tw.Node.Box.surrounds(data.Pos) || data.Time > ray.Tmax {
 		return rayhit
 	}
 
 	// If we are in a voxel-containing node, we hit
-	if tw.node.Voxel.Present {
+	if tw.Node.Voxel.Present {
 		rayhit.Hit = true
 		rayhit.Time = data.Time
-		rayhit.Color = tw.node.Voxel.Color
+		rayhit.Color = tw.Node.Voxel.Color
 		return rayhit
 	}
 
 	// Make the DDA jump larger based on the current box size
-	data.ScaleToBox(tw.node.Box, ray)
+	data.ScaleToBox(tw.Node.Box, ray)
 	data.step()
 	return tw.StateMarchRay(ray, data)
 }
@@ -336,45 +336,6 @@ type Voxel struct {
 func VoxelInit() Voxel {
 	return Voxel{Present: false, Color: [3]byte{0, 0, 0}}
 }
-
-type StateMachineMarch interface {
-	StateMarchRay(ray Ray, data MarchData) RayHit
-}
-
-// func (node *TreeNode) MarchRay(ray Ray) RayHit {
-// 	rayhit := RayHit{Hit: false}
-
-// 	tmin, tmax := node.Box.RayIntersection(ray)
-// 	if tmax < tmin || tmin > ray.Tmax {
-// 		return rayhit // Never hits the bounding box
-// 	}
-
-// 	if node.Voxel.Present {
-// 		rayhit.Hit = true
-// 		rayhit.Time = tmin
-// 		rayhit.Color = node.Voxel.Color
-// 		return rayhit
-// 	}
-
-// 	if node.IsStem() {
-// 		closesthit := RayHit{Hit: false}
-// 		closesttime := ray.Tmax
-
-// 		for i := range 8 {
-// 			if node.Leaves[i] != nil {
-// 				hit := node.Leaves[i].MarchRay(ray)
-// 				if hit.Hit && hit.Time < closesttime {
-// 					closesthit = hit
-// 					closesttime = hit.Time
-// 				}
-// 			}
-// 		}
-
-// 		return closesthit
-// 	}
-
-// 	return rayhit
-// }
 
 // Get rid of all this to make debugging easier, this is a really optimization but
 // it is too confusing for me right now
