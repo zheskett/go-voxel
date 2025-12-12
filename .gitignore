@@ -11,6 +11,7 @@
 # go-voxel binary
 /go-voxel
 /test-parser
+*.pprof
 
 # Test binary, built with `go test -c`
 *.test

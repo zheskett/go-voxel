@@ -23,9 +23,10 @@ func (e ObjParseError) Error() string {
 
 // Contains information about an object
 type Obj struct {
-	Vertices []te.Vector3
-	Edges    [][2]int
-	Faces    [][3]int
+	Vertices    []te.Vector3
+	Edges       [][2]int
+	Faces       [][3]int
+	MaxVertsPos te.Vector3
 	// Don't use uv/normals (yet?)
 }
 
@@ -177,6 +178,7 @@ func (obj *Obj) scale(maxVertsPos, minVertsPos te.Vector3, flipX, flipY, flipZ b
 	maxAbsPos := maxVertsPos.Sub(offsetVec).Max()
 
 	scaleFactor := 1.0 / maxAbsPos
+	obj.MaxVertsPos = maxVertsPos.Sub(offsetVec).Mul(scaleFactor).ComponentMin(1.0)
 
 	// Translate each point by the offset and scale
 	for i, v := range obj.Vertices {
