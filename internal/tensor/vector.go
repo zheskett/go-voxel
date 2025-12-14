@@ -14,6 +14,11 @@ type Vector3 struct {
 	X, Y, Z float32 // X coordinate
 }
 
+// A 3D integer Vector
+type Vector3i struct {
+	X, Y, Z int
+}
+
 // Start Vector2 Functions
 
 // Creates a 2D Vector from components
@@ -312,3 +317,48 @@ func (v Vector3) Inv() Vector3 {
 }
 
 // End Vector3 Functions
+
+// Start Vector3i Functions
+
+// Creates a 3D Vector from components
+func Vec3i(x, y, z int) Vector3i {
+	return Vector3i{x, y, z}
+}
+
+// Creates a 3D vector with similar components
+func Vec3iSplat(c int) Vector3i {
+	return Vec3i(c, c, c)
+}
+
+// Returns an array of the vector components in order
+func (v1 Vector3i) AsArray() [3]int {
+	return [3]int{v1.X, v1.Y, v1.Z}
+}
+
+// Returns the float32 equivalent vector
+func (v1 Vector3i) AsVec3f() Vector3 {
+	return Vec3(float32(v1.X), float32(v1.Y), float32(v1.Z))
+}
+
+// Returns the sum of two vectors
+func (v1 Vector3i) Add(v2 Vector3i) Vector3i {
+	return Vec3i(v1.X+v2.X, v1.Y+v2.Y, v1.Z+v2.Z)
+}
+
+// Returns the difference of two vectors
+func (v1 Vector3i) Sub(v2 Vector3i) Vector3i {
+	return Vec3i(v1.X-v2.X, v1.Y-v2.Y, v1.Z-v2.Z)
+}
+
+// Returns the product of a vector and a scalar
+func (v1 Vector3i) Mul(s int) Vector3i {
+	return Vec3i(v1.X*s, v1.Y*s, v1.Z*s)
+}
+
+// Returns the quotient of a vector and a scalar
+// Need to be careful because this is integer division
+func (v1 Vector3i) Div(s int) Vector3i {
+	return Vec3i(v1.X/s, v1.Y/s, v1.Z/s)
+}
+
+// End Vector3i Functions

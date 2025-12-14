@@ -2,89 +2,46 @@ package voxel
 
 import (
 	"github.com/chewxy/math32"
-	"github.com/zheskett/go-voxel/internal/tensor"
+	te "github.com/zheskett/go-voxel/internal/tensor"
 )
-
-// This should later be changed to 4^3 so that we can fit in a single u64
-const (
-	BrickSize  int = 8
-	BrickTotal int = BrickSize * BrickSize * BrickSize
-)
-
-// An integer 3D vector
-type Vec3i struct {
-	X, Y, Z int
-}
-
-func Vec3(x, y, z int) Vec3i {
-	return Vec3i{x, y, z}
-}
-
-func Vec3Splat(c int) Vec3i {
-	return Vec3(c, c, c)
-}
-
-func (v1 Vec3i) AsArray() [3]int {
-	return [3]int{v1.X, v1.Y, v1.Z}
-}
-
-func (v1 Vec3i) AsVec3f() tensor.Vector3 {
-	return tensor.Vec3(float32(v1.X), float32(v1.Y), float32(v1.Z))
-}
-
-func (v1 Vec3i) Add(v2 Vec3i) Vec3i {
-	return Vec3(v1.X+v2.X, v1.Y+v2.Y, v1.Z+v2.Z)
-}
-
-func (v1 Vec3i) Sub(v2 Vec3i) Vec3i {
-	return Vec3(v1.X-v2.X, v1.Y-v2.Y, v1.Z-v2.Z)
-}
-
-func (v1 Vec3i) Mul(s int) Vec3i {
-	return Vec3(v1.X*s, v1.Y*s, v1.Z*s)
-}
-
-// Need to be careful because this is integer division
-func (v1 Vec3i) Div(s int) Vec3i {
-	return Vec3(v1.X/s, v1.Y/s, v1.Z/s)
-}
 
 // Axis Aligned Bounding Box
 type Box struct {
-	Low  Vec3i // Stores the low position of a cubic bounding box
-	Size int   // The full side lenghts of the cubic bounding box
+	Low  te.Vector3i // Stores the low position of a cubic bounding box
+	Size int         // The full side lenghts of the cubic bounding box
 }
 
 func BoxInit(lx, ly, lz int, size int) Box {
-	return Box{Low: Vec3(lx, ly, lz), Size: size}
+	return Box{Low: te.Vec3i(lx, ly, lz), Size: size}
 }
 
 func (box *Box) isUnit() bool {
 	return box.Size == 1
 }
 
-func (box *Box) center() Vec3i {
+func (box *Box) center() te.Vector3i {
 	if box.Size%2 != 0 {
 		panic("There is a large problem if this is ever called on a unit AABB")
 	}
-	return box.Low.Add(Vec3Splat(box.Size / 2))
+	return box.Low.Add(te.Vec3iSplat(box.Size / 2))
 }
 
-func (box *Box) high() Vec3i {
-	return box.Low.Add(Vec3Splat(box.Size))
+func (box *Box) high() te.Vector3i {
+	return box.Low.Add(te.Vec3iSplat(box.Size))
 }
 
 // Returns if a point is fully encased by the box. The convention we are using is [min, max)
-func (box *Box) surrounds(v Vec3i) bool {
+func (box *Box) surrounds(v te.Vector3i) bool {
 	high := box.high()
 	return v.X >= box.Low.X && v.Y >= box.Low.Y && v.Z >= box.Low.Z &&
 		v.X < high.X && v.Y < high.Y && v.Z < high.Z
 }
 
 // Slab-method of AABB and ray intersection
+// Returns (min_t, max_t) corresponding to the rays' entrance and exit time
 func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 	tmin := float32(0.0)
-	tmax := ray.Tmax
+	tmax := math32.Inf(1)
 	dirs := ray.Dir.AsArray()
 	orig := ray.Origin.AsArray()
 	low := box.Low.AsArray()
@@ -115,6 +72,10 @@ func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 		}
 	}
 
+	if tmin < 0.0 {
+		panic("this shouldn't happen")
+	}
+
 	return tmin, tmax
 }
 
@@ -142,6 +103,113 @@ func (box *Box) index(x, y, z int) int {
 		panic("using relative indexing")
 	}
 	return (x << 2) | (y << 1) | z
+}
+
+type Voxel struct {
+	Present bool
+	Color   [3]byte
+}
+
+func VoxelInit() Voxel {
+	return Voxel{Present: false, Color: [3]byte{0, 0, 0}}
+}
+
+// Doubly linked octant node
+type TreeNode struct {
+	Box    Box
+	Voxel  Voxel
+	Stem   *TreeNode
+	Leaves [8]*TreeNode
+}
+
+func TreeNodeInit(box Box, stem *TreeNode) *TreeNode {
+	return &TreeNode{box, VoxelInit(), stem, [8]*TreeNode{}}
+}
+
+// If we are at the top of the tree
+func (node *TreeNode) IsRoot() bool {
+	return node.Stem == nil
+}
+
+// Basically returns if we can jump that entire octant
+func (node *TreeNode) IsEmpty() bool {
+	return !node.Voxel.Present
+}
+
+// Has leaves that need to be searched in order
+func (node *TreeNode) IsStem() bool {
+	return node.Leaves[0] != nil
+}
+
+// Has a voxel
+func (node *TreeNode) IsLeaf() bool {
+	return node.Leaves[0] == nil
+}
+
+func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
+	pos := te.Vec3i(x, y, z)
+
+	// Point isn't in the tree
+	if !node.Box.surrounds(pos) {
+		return false
+	}
+
+	// There is no brick, but one can be directly created
+	if node.Box.isUnit() {
+		node.Voxel.Present = true
+		node.Voxel.Color = [3]byte{r, g, b}
+		return true
+	}
+
+	// Otherwise, we need to split apart into bricks
+	if !node.IsStem() {
+		node.subdivide()
+	}
+
+	octantcoords := GetOctantCoords(pos, node.Box)
+	linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
+	return node.Leaves[linear].RecursiveInsert(x, y, z, r, g, b)
+}
+
+func (node *TreeNode) subdivide() {
+	parts := node.Box.subdivide()
+	for i := range 8 {
+		node.Leaves[i] = TreeNodeInit(parts[i], node)
+	}
+}
+
+type Octree struct {
+	Root    TreeNode
+	Z, Y, X int // For compatibility with the old ones
+}
+
+func OctreeInit(size int) Octree {
+	// Currently, the whole tree is 'lopsided' to one side and not centered around zero
+	// to allow for direct translation from the array storage without coordinate system
+	// transformations
+	return Octree{*TreeNodeInit(BoxInit(0, 0, 0, size), nil), size, size, size} // Root has no stem
+}
+
+func (oc *Octree) Insert(x, y, z int, r, g, b byte) bool {
+	return oc.Root.RecursiveInsert(x, y, z, r, g, b)
+}
+
+// Entry point for sending a ray into the tree
+func (oc *Octree) MarchRay(ray Ray) RayHit {
+	rayhit := RayHit{Hit: false}
+
+	tmin, tmax := oc.Root.Box.RayIntersection(ray)
+	if tmin > tmax {
+		return rayhit // The ray misses the the whole tree
+	}
+
+	if tmin < 0.0 {
+		panic("should have been clamped by the slab AABB")
+	}
+
+	data := MarchDataInit(tmin, tmax, ray)
+	walker := TreeWalkerInit(oc)
+	return walker.StateMarchRay(ray, data)
 }
 
 type TreeWalker struct {
@@ -175,7 +243,7 @@ func (tw *TreeWalker) Descend(x, y, z int) {
 }
 
 func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
-	pos := Vec3(x, y, z)
+	pos := te.Vec3i(x, y, z)
 
 	// Climb up until the node surrounds the desired position
 	for !tw.Node.Box.surrounds(pos) {
@@ -188,14 +256,14 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 	// Continue descending down into the smallest node that surrounds the position
 	for tw.Node.IsStem() {
 		oct := GetOctantCoords(pos, tw.Node.Box)
-		if !tw.Node.Box.surrounds(Vec3(x, y, z)) {
+		if !tw.Node.Box.surrounds(te.Vec3i(x, y, z)) {
 			panic("why is this happening to me")
 		}
 		tw.Descend(oct.X, oct.Y, oct.Z)
 	}
 }
 
-func GetOctantCoords(pos Vec3i, box Box) Vec3i {
+func GetOctantCoords(pos te.Vector3i, box Box) te.Vector3i {
 	if !box.surrounds(pos) {
 		panic("The box doesn't contain the voxel even")
 	}
@@ -216,239 +284,34 @@ func GetOctantCoords(pos Vec3i, box Box) Vec3i {
 	} else {
 		z = 1
 	}
-	return Vec3(x, y, z)
+	return te.Vec3i(x, y, z)
 }
 
 func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	rayhit := RayHit{Hit: false}
-
-	// Descend into the lowest (and smallest) part of the tree
-	tw.GotoAbsolute(data.Pos.X, data.Pos.Y, data.Pos.Z)
-
-	// Checks to make sure there isn't infinite recursion
-	if !tw.Node.Box.surrounds(data.Pos) || data.Time > ray.Tmax {
-		return rayhit
-	}
-
-	// If we are in a voxel-containing node, we hit
-	if tw.Node.Voxel.Present && tw.Node.Box.isUnit() {
-		rayhit.Hit = true
-		rayhit.Time = data.Time
-		rayhit.Color = tw.Node.Voxel.Color
-		return rayhit
-	}
-
-	// Make the DDA jump larger based on the current box size
-	data.ScaleToBox(tw.Node.Box, ray)
-	data.step()
-	return tw.StateMarchRay(ray, data)
-}
-
-// Doubly linked octant node
-type TreeNode struct {
-	Box    Box
-	Voxel  Voxel
-	Stem   *TreeNode
-	Leaves [8]*TreeNode
-}
-
-func TreeNodeInit(box Box, stem *TreeNode) TreeNode {
-	return TreeNode{box, VoxelInit(), stem, [8]*TreeNode{}}
-}
-
-// If we are at the top of the tree
-func (node *TreeNode) IsRoot() bool {
-	return node.Stem == nil
-}
-
-// Basically returns if we can jump that entire octant
-func (node *TreeNode) IsEmpty() bool {
-	return !node.Voxel.Present
-}
-
-// Has leaves that need to be searched in order
-func (node *TreeNode) IsStem() bool {
-	return node.Leaves[0] != nil
-}
-
-// Has a voxel
-func (node *TreeNode) IsLeaf() bool {
-	return node.Leaves[0] == nil
-}
-
-func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
-	pos := Vec3(x, y, z)
-
-	// Point isn't in the tree
-	if !node.Box.surrounds(pos) {
-		return false
-	}
-
-	// There is no brick, but one can be directly created
-	if node.Box.isUnit() {
-		node.Voxel.Present = true
-		node.Voxel.Color = [3]byte{r, g, b}
-		return true
-	}
-
-	// Otherwise, we need to split apart into bricks
-	if !node.IsStem() {
-		node.subdivide()
-	}
-
-	octantcoords := GetOctantCoords(pos, node.Box)
-	linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
-	return node.Leaves[linear].RecursiveInsert(x, y, z, r, g, b)
-}
-
-func (node *TreeNode) subdivide() {
-	parts := node.Box.subdivide()
-	for i := range 8 {
-		child := TreeNodeInit(parts[i], node)
-		node.Leaves[i] = &child
-	}
-}
-
-type Octree struct {
-	Root TreeNode
-}
-
-func OctreeInit(size int) Octree {
-	// Currently, the whole tree is 'lopsided' to one side and not centered around zero
-	// to allow for direct translation from the array storage without coordinate system
-	// transformations
-	return Octree{TreeNodeInit(BoxInit(0, 0, 0, size), nil)} // Root has no stem
-}
-
-func (bt *Octree) Insert(x, y, z int, r, g, b byte) bool {
-	return bt.Root.RecursiveInsert(x, y, z, r, g, b)
-}
-
-// Entry point for sending a ray into the tree
-func (bt *Octree) MarchRay(ray Ray) RayHit {
-	tmin, tmax := bt.Root.Box.RayIntersection(ray)
-	if tmin > tmax || tmin > ray.Tmax {
-		return RayHit{Hit: false} // We never even hit the tree
-	}
-
-	walker := TreeWalkerInit(bt)
-	marchdata := MarchDataInit(ray)
-
-	return walker.StateMarchRay(ray, marchdata)
-}
-
-type Voxel struct {
-	Present bool
-	Color   [3]byte
-}
-
-func VoxelInit() Voxel {
-	return Voxel{Present: false, Color: [3]byte{0, 0, 0}}
-}
-
-// Get rid of all this to make debugging easier, this is a really optimization but
-// it is too confusing for me right now
-//
-// This stuff shouldn't be used anywhere at this point
-/*
-###################################################################################################
-###################################################################################################
-###################################################################################################
-*/
-
-// This is basically a slimmed down clone of the old Voxel struct.
-//
-// The idea for this tree works kind of the way that minecraft stores chunks,
-// but using a tree for faster traversal
-type Brick struct {
-	Presence BitArray
-	Color    [][3]byte
-}
-
-func BrickInit() Brick {
-	presence := BitArrayInit(BrickTotal)
-	color := make([][3]byte, BrickTotal)
-	return Brick{presence, color}
-}
-
-func (brk *Brick) Set(x, y, z int, r, g, b byte) {
-	idx := brk.Index(x, y, z)
-	brk.Presence.Set(idx)
-	brk.Color[idx] = [3]byte{r, g, b}
-}
-
-func (brk *Brick) Reset(x, y, z int) {
-	idx := brk.Index(x, y, z)
-	brk.Presence.Reset(idx)
-	brk.Color[idx] = [3]byte{0, 0, 0}
-}
-
-func (brk *Brick) Index(x, y, z int) int {
-	return BrickSize*BrickSize*z + BrickSize*y + x
-}
-
-func (brk *Brick) Surrounds(x, y, z int) bool {
-	return x < BrickSize && y < BrickSize && z < BrickSize && x >= 0 && y >= 0 && z >= 0
-}
-
-// Can repurpose this exact same function for traversing a single brick, once we go
-// through the tree and determine that the leaf has voxels present
-func (brk *Brick) MarchRay(ray Ray) RayHit {
-	rayhit := RayHit{Hit: false}
-
-	march := MarchDataInit(ray)
-
 	for {
-		if march.Time > ray.Tmax {
+		if data.Time > data.Tmax {
 			break
 		}
-		if brk.Surrounds(march.Pos.X, march.Pos.Y, march.Pos.Z) {
-			idx := brk.Index(march.Pos.X, march.Pos.Y, march.Pos.Z)
-			if brk.Presence.Get(idx) {
-				rayhit.Hit = true
-				rayhit.Time = march.Time
-				rayhit.IntPos = [3]int{march.Pos.X, march.Pos.Y, march.Pos.Z}
-				rayhit.Position = ray.Origin.Add(ray.Dir.Mul(march.Time))
-				rayhit.Color = brk.Color[idx]
-				switch march.Side {
-				case axisX:
-					rayhit.Normal = tensor.Vec3(1, 0, 0).Mul(-float32(march.Step.X))
-				case axisY:
-					rayhit.Normal = tensor.Vec3(0, 1, 0).Mul(-float32(march.Step.Y))
-				case axisZ:
-					rayhit.Normal = tensor.Vec3(0, 0, 1).Mul(-float32(march.Step.Z))
-				default:
-					rayhit.Normal = tensor.Vec3(0, 0, 0)
-				}
-				break
+
+		pos := ray.Origin.Add(ray.Dir.Mul(data.Time))
+		x, y, z := int(math32.Floor(pos.X)), int(math32.Floor(pos.Y)), int(math32.Floor(pos.Z))
+		tw.GotoAbsolute(x, y, z)
+
+		if tw.Node.IsEmpty() {
+			_, nodeexit := tw.Node.Box.RayIntersection(ray)
+			data.Time = math32.Max(nodeexit, data.Time+VoxelRayDelta)
+			continue
+		}
+
+		if tw.Node.IsLeaf() {
+			return RayHit{
+				Hit:   true,
+				Color: tw.Node.Voxel.Color,
 			}
 		}
 
-		if march.Timev.X < march.Timev.Y {
-			if march.Timev.X < march.Timev.Z {
-				march.Pos.X += march.Step.X
-				march.Time = march.Timev.X
-				march.Timev.X += march.Inv.X
-				march.Side = axisX
-			} else {
-				march.Pos.Z += march.Step.Z
-				march.Time = march.Timev.Z
-				march.Timev.Z += march.Inv.Z
-				march.Side = axisZ
-			}
-		} else {
-			if march.Timev.Y < march.Timev.Z {
-				march.Pos.Y += march.Step.Y
-				march.Time = march.Timev.Y
-				march.Timev.Y += march.Inv.Y
-				march.Side = axisY
-			} else {
-				march.Pos.Z += march.Step.Z
-				march.Time = march.Timev.Z
-				march.Timev.Z += march.Inv.Z
-				march.Side = axisZ
-			}
-		}
+		data.Time += VoxelRayDelta
 	}
 
 	return rayhit

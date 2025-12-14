@@ -38,7 +38,7 @@ func main() {
 	engine.SetCallbacks()
 
 	VoxelDebugSceneSmall(&engine.Voxtree)
-	VoxelDebugEmptyScene(&engine.Voxtree)
+	// VoxelDebugEmptyScene(&engine.Voxtree)
 
 	for {
 		engine.UpdateInputs()
