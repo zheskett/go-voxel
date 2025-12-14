@@ -38,6 +38,7 @@ func main() {
 	engine.SetCallbacks()
 
 	VoxelDebugSceneSmall(&engine.Voxtree)
+	VoxelDebugEmptyScene(&engine.Voxtree)
 
 	for {
 		engine.UpdateInputs()
@@ -86,6 +87,21 @@ func VoxelDebugSceneSmall(vox *vxl.Octree) {
 					vox.Insert(i, j, k, 200, 200, 200)
 				}
 			}
+		}
+	}
+}
+
+func VoxelDebugEmptyScene(vox *vxl.Octree) {
+	for i := 0; i < vox.Root.Box.Size; i++ {
+		for j := 0; j < vox.Root.Box.Size; j++ {
+			// Floor and ceiling
+			vox.Insert(i, 0, j, 200, 200, 200)
+			vox.Insert(i, 100, j, 200, 200, 200)
+			// Walls
+			vox.Insert(0, i, j, 200, 200, 200)
+			vox.Insert(vox.Root.Box.Size, i, j, 200, 200, 200)
+			vox.Insert(j, i, 0, 200, 200, 200)
+			vox.Insert(j, i, vox.Root.Box.Size, 200, 200, 200)
 		}
 	}
 }

@@ -163,30 +163,31 @@ func (march *MarchData) ScaleToBox(box Box, ray Ray) {
 	low := box.Low.AsVec3f()
 	high := box.high()
 	highf := high.AsVec3f()
-
-	march.Inv = march.UnitInv.Mul(float32(box.Size))
+	x, y, z := ray.Origin.Add(ray.Dir.Mul(march.Time)).Elms()
 
 	if march.Step.X > 0 {
-		march.Timev.X = (highf.X - ray.Origin.X) * march.UnitInv.X
+		march.Timev.X = march.Time + (highf.X-x-1.0)*march.UnitInv.X
 		march.Jump.X = high.X - march.Pos.X
 	} else {
-		march.Timev.X = (ray.Origin.X - low.X) * march.UnitInv.X
+		march.Timev.X = march.Time + (x-low.X)*march.UnitInv.X
 		march.Jump.X = box.Low.X - march.Pos.X - 1
 	}
 
 	if march.Step.Y > 0 {
-		march.Timev.Y = (highf.Y - ray.Origin.Y) * march.UnitInv.Y
+		march.Timev.Y = march.Time + (highf.Y-y-1.0)*march.UnitInv.Y
 		march.Jump.Y = high.Y - march.Pos.Y
 	} else {
-		march.Timev.Y = (ray.Origin.Y - low.Y) * march.UnitInv.Y
+		march.Timev.Y = march.Time + (y-low.Y)*march.UnitInv.Y
 		march.Jump.Y = box.Low.Y - march.Pos.Y - 1
 	}
 
 	if march.Step.Z > 0 {
-		march.Timev.Z = (highf.Z - ray.Origin.Z) * march.UnitInv.Z
+		march.Timev.Z = march.Time + (highf.Z-z-1.0)*march.UnitInv.Z
 		march.Jump.Z = high.Z - march.Pos.Z
-	} else {
-		march.Timev.Z = (ray.Origin.Z - low.Z) * march.UnitInv.Z
+	} else if march.Step.Z < 0 {
+		march.Timev.Z = march.Time + (z-low.Z)*march.UnitInv.Z
 		march.Jump.Z = box.Low.Z - march.Pos.Z - 1
+	} else {
+		panic("this shouldn't ever be the case")
 	}
 }

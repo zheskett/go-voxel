@@ -64,6 +64,9 @@ func (box *Box) isUnit() bool {
 }
 
 func (box *Box) center() Vec3i {
+	if box.Size%2 != 0 {
+		panic("There is a large problem if this is ever called on a unit AABB")
+	}
 	return box.Low.Add(Vec3Splat(box.Size / 2))
 }
 
@@ -184,13 +187,19 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 
 	// Continue descending down into the smallest node that surrounds the position
 	for tw.Node.IsStem() {
-		center := tw.Node.Box.center()
-		oct := GetOctantCoords(pos, center)
+		oct := GetOctantCoords(pos, tw.Node.Box)
+		if !tw.Node.Box.surrounds(Vec3(x, y, z)) {
+			panic("why is this happening to me")
+		}
 		tw.Descend(oct.X, oct.Y, oct.Z)
 	}
 }
 
-func GetOctantCoords(pos, center Vec3i) Vec3i {
+func GetOctantCoords(pos Vec3i, box Box) Vec3i {
+	if !box.surrounds(pos) {
+		panic("The box doesn't contain the voxel even")
+	}
+	center := box.center()
 	var x, y, z int
 	if pos.X < center.X {
 		x = 0
@@ -222,7 +231,7 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	}
 
 	// If we are in a voxel-containing node, we hit
-	if tw.Node.Voxel.Present {
+	if tw.Node.Voxel.Present && tw.Node.Box.isUnit() {
 		rayhit.Hit = true
 		rayhit.Time = data.Time
 		rayhit.Color = tw.Node.Voxel.Color
@@ -287,7 +296,7 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 		node.subdivide()
 	}
 
-	octantcoords := GetOctantCoords(pos, node.Box.center())
+	octantcoords := GetOctantCoords(pos, node.Box)
 	linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
 	return node.Leaves[linear].RecursiveInsert(x, y, z, r, g, b)
 }
