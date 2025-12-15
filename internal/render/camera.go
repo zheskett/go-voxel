@@ -2,7 +2,6 @@
 package render
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/chewxy/math32"
@@ -100,10 +99,8 @@ func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ra
 	}
 }
 
-func (cam *Camera) RenderVoxels(vtree *vxl.Octree, pix *Pixels) {
+func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *Pixels, tick uint) {
 	basis := CameraRayBasisInit(cam, pix)
-
-	fmt.Printf("%v, %v, %v", cam.Fvec, cam.Rvec, cam.Uvec)
 
 	threads := sync.WaitGroup{}
 	for thread := range RenderThreads {
@@ -116,11 +113,13 @@ func (cam *Camera) RenderVoxels(vtree *vxl.Octree, pix *Pixels) {
 
 					ray := cam.getPixelRay(col, row, basis)
 
-					hit := vtree.MarchRay(ray)
+					hit := vtree.Voxels.MarchRay(ray)
 					if hit.Hit {
 						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
-						shadedintensity := te.Vec3Splat(0.8) // Make it a little less bright
+						// shadedintensity := GetPixelShading(vtree, hit, cam.RenderDistance)
+						shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
+						// shadedintensity := te.Vec3Splat(0.8)
 
 						// // Make sure that the minimum brightness even in complete shadow is 5%
 						shadedcolor := shadedintensity.ComponentMax(0.05).MulComponent(color).ComponentMin(255.0)

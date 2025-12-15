@@ -8,7 +8,7 @@ import (
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
-func VoxelDebugEmptyScene(vox *vxl.Voxels) {
+func VoxelDebugEmptyScene(vox *vxl.VoxelWorld) {
 	brightness := 10000.0
 	vox.Lights = append(vox.Lights, vxl.LightPoint{
 		Position: te.Vec3(float32(vox.X/2), 70, float32(vox.Z/2)),
@@ -57,7 +57,7 @@ func VoxelDebugEmptyScene(vox *vxl.Voxels) {
 }
 
 // A small room with 3 colored lights and boxes everywhere
-func VoxelDebugSceneSmall(vox *vxl.Voxels) {
+func VoxelDebugSceneSmall(vox *vxl.VoxelWorld) {
 	brightness := 500
 	light := vxl.LightPoint{
 		Position: te.Vec3(50, 15, 30),
@@ -76,8 +76,8 @@ func VoxelDebugSceneSmall(vox *vxl.Voxels) {
 	vox.Lights = append(vox.Lights, light)
 
 	// Make a floor and ceiling
-	for i := 0; i < vox.X; i++ {
-		for j := 0; j < vox.Z; j++ {
+	for i := range 100 {
+		for j := range 100 {
 			vox.SetVoxel(i, 0, j, 220, 180, 180)
 			vox.SetVoxel(i, 40, j, 180, 180, 180)
 		}
@@ -119,7 +119,7 @@ func VoxelDebugSceneSmall(vox *vxl.Voxels) {
 }
 
 // A massive open scene with a bunch of random stuff
-func VoxelDebugSceneBig(vox *vxl.Voxels) {
+func VoxelDebugSceneBig(vox *vxl.VoxelWorld) {
 	brightness := 15000
 	light := vxl.LightPoint{
 		Position: te.Vec3(64, 32, 96),
@@ -202,7 +202,7 @@ func VoxelDebugSceneBig(vox *vxl.Voxels) {
 	}
 }
 
-func VoxelDebugSceneHugeBunny(vox *vxl.Voxels) {
+func VoxelDebugSceneHugeBunny(vox *vxl.VoxelWorld) {
 	brightness := 55000
 	light := vxl.LightPoint{
 		Position: te.Vec3(64, 32, 96),
@@ -232,7 +232,7 @@ func VoxelDebugSceneHugeBunny(vox *vxl.Voxels) {
 		Position: te.Vec3(96, 32, 500),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	*vox = vxl.VoxelsInit(512, 512, 512)
+	// *vox = vxl.VoxelWorldInit(512, 512, 512)
 	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7)
 
 	// Bunny
@@ -244,7 +244,7 @@ func VoxelDebugSceneHugeBunny(vox *vxl.Voxels) {
 	vox.AddVoxelObj(bunny, 0, 0, 0)
 }
 
-func VoxelDebugSceneTrees(vox *vxl.Voxels) {
+func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
 	brightness := 30000
 	light := vxl.LightPoint{
 		Position: te.Vec3(4, 2, 6),
@@ -278,7 +278,7 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 		Position: te.Vec3(1, 140, 0),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
 	}
-	*vox = vxl.VoxelsInit(512, 512, 512)
+	// *vox = vxl.VoxelWorldInit(512, 512, 512)
 	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7, light8)
 
 	// Fall Tree
@@ -303,7 +303,7 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 		panic(err)
 	}
 	menger.Squash()
-	vox.AddVoxelObj(menger, 0, vox.Y-int(menger.Y)-100, 0)
+	vox.AddVoxelObj(menger, 0, vox.Y, 250)
 
 	// Monument
 	monu, err := vxl.ConvertVoxPath("assets/monu10.vox", false, true, false)
@@ -319,7 +319,7 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 		panic(err)
 	}
 	kloster.Squash()
-	vox.AddVoxelObj(kloster, 300, vox.Y-int(kloster.Y)-250, 200)
+	vox.AddVoxelObj(kloster, 300, vox.Y-int(kloster.Y), 200)
 
 	// sponza
 	sponza, err := vxl.ConvertVoxPath("assets/sponza.vox", false, true, false)
@@ -328,5 +328,5 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 	}
 
 	sponza.Squash()
-	vox.AddVoxelObj(sponza, 0, vox.Y-int(sponza.Y)-250, 0)
+	vox.AddVoxelObj(sponza, 100, vox.Y-int(sponza.Y), 512)
 }

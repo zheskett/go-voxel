@@ -36,6 +36,7 @@ type RayHit struct {
 	IntPos   [3]int
 	Position te.Vector3
 	Normal   te.Vector3
+	Voxel    *Voxel
 }
 
 // The default method that should be used anytime a raycast is made
@@ -48,10 +49,11 @@ type MarchData struct {
 	Tmax float32
 	Time float32
 	Inv  te.Vector3
+	Side axis
 }
 
 func MarchDataInit(tmin, tmax float32, ray Ray) MarchData {
-	return MarchData{Tmin: tmin, Tmax: tmax, Time: tmin, Inv: ray.Dir.Inv()}
+	return MarchData{Tmin: tmin, Tmax: tmax, Time: tmin, Inv: ray.Dir.Inv(), Side: none}
 }
 
 // The sort of 'internal' marching method. Shouldn't be called directly for

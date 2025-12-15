@@ -237,10 +237,10 @@ func (vox *Voxels) MarchRay(ray Ray) RayHit {
 }
 
 // Adds a voxel object to the world
-func (vox *Voxels) AddVoxelObj(vObj VoxelObj, x, y, z int) {
+func (vox *VoxelWorld) AddVoxelObj(vObj VoxelObj, x, y, z int) {
 	for xyz, cIdx := range vObj.Voxels {
 		vx, vy, vz := int(xyz[0]), int(xyz[1]), int(xyz[2])
-		if vox.Surrounds(x+vx, y+vy, z+vz) {
+		if vox.Voxels.Root.Box.surrounds(te.Vec3i(x+vx, y+vy, z+vz)) {
 			clr := vObj.ColorPalete[cIdx]
 			vox.SetVoxel(x+vx, y+vy, z+vz, clr.R, clr.G, clr.B)
 		}
@@ -273,7 +273,12 @@ type DirLight struct {
 
 // Manager type for the state of the voxels
 type VoxelWorld struct {
-	Voxels Octree
-	Sun    DirLight
-	Lights []LightPoint
+	X, Y, Z int
+	Voxels  Octree
+	Sun     DirLight
+	Lights  []LightPoint
+}
+
+func (vox *VoxelWorld) SetVoxel(x, y, z int, r, g, b byte) {
+	vox.Voxels.Insert(x, y, z, r, g, b)
 }

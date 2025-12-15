@@ -16,7 +16,7 @@ type Engine struct {
 	Renderer  *render.RenderManager
 	Window    *glfw.Window
 	Camera    render.Camera
-	Voxtree   voxel.Octree
+	Voxels    voxel.VoxelWorld
 	Framedata render.FrameData
 }
 
@@ -28,7 +28,7 @@ func (eng *Engine) UpdateInputs() {
 
 func (eng *Engine) UpdateRender() {
 	eng.Renderer.Pixels.FillPixels(render.BackgroundRed, render.BackgroundGreen, render.BackgroundBlue)
-	eng.Camera.RenderVoxels(&eng.Voxtree, &eng.Renderer.Pixels)
+	eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Pixels, eng.Framedata.Tick)
 	eng.Renderer.Render(eng.Window)
 }
 

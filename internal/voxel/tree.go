@@ -43,10 +43,13 @@ func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 	tmin := float32(0.0)
 	tmax := math32.Inf(1)
 	dirs := ray.Dir.AsArray()
+	invs := ray.Dir.Inv().AsArray()
 	orig := ray.Origin.AsArray()
 	low := box.Low.AsArray()
 	high := box.high().AsArray()
 
+	// There is a branchless version I found on gamedev.stackexchange to replace it
+	// later
 	for i := range 3 {
 		if dirs[i] == 0.0 {
 			if orig[i] < float32(low[i]) || orig[i] >= float32(high[i]) {
@@ -54,7 +57,7 @@ func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 			}
 			continue
 		}
-		invd := 1.0 / dirs[i]
+		invd := invs[i]
 		t0 := (float32(low[i]) - orig[i]) * invd
 		t1 := (float32(high[i]) - orig[i]) * invd
 
@@ -98,20 +101,43 @@ func (box *Box) subdivide() [8]Box {
 }
 
 // Returns the linear index into the Box assuming relative coordinates [0, 2)
-func (box *Box) index(x, y, z int) int {
-	if x > 1 || y > 1 || z > 1 || x < 0 || y < 0 || z < 0 {
-		panic("using relative indexing")
+// func (box *Box) index(x, y, z int) int {
+// 	if x > 1 || y > 1 || z > 1 || x < 0 || y < 0 || z < 0 {
+// 		panic("using relative indexing")
+// 	}
+// 	return (x << 2) | (y << 1) | z
+// }
+
+// Returns the linear index into the Box assuming relative coordinates [0, 2)
+func (box *Box) Index(x, y, z int) int {
+	center := box.center()
+	index := 0
+	if x >= center.X {
+		index |= 1 << 2
 	}
-	return (x << 2) | (y << 1) | z
+	if y >= center.Y {
+		index |= 1 << 1
+	}
+	if z >= center.Z {
+		index |= 1 << 0
+	}
+	return index
+}
+
+type VoxelLighting struct {
+	Light te.Vector3
+	Dir   te.Vector3
+	Tick  uint
 }
 
 type Voxel struct {
 	Present bool
 	Color   [3]byte
+	Light   VoxelLighting
 }
 
 func VoxelInit() Voxel {
-	return Voxel{Present: false, Color: [3]byte{0, 0, 0}}
+	return Voxel{Present: false}
 }
 
 // Doubly linked octant node
@@ -136,14 +162,27 @@ func (node *TreeNode) IsEmpty() bool {
 	return !node.Voxel.Present
 }
 
+// Has a voxel
+func (node *TreeNode) IsLeaf() bool {
+	return node.Voxel.Present
+}
+
 // Has leaves that need to be searched in order
 func (node *TreeNode) IsStem() bool {
 	return node.Leaves[0] != nil
 }
 
-// Has a voxel
-func (node *TreeNode) IsLeaf() bool {
-	return node.Leaves[0] == nil
+func (node *TreeNode) query(pos te.Vector3i) *Voxel {
+	if node.IsLeaf() {
+		return &node.Voxel
+	}
+	if node.IsStem() {
+		// octantcoords := GetOctantCoords(pos, node.Box)
+		// linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
+		index := node.Box.Index(pos.X, pos.Y, pos.Z)
+		return node.Leaves[index].query(pos)
+	}
+	return nil // This shouldn't ever happen, this shouldn't be called blinding without knowing a voxel is there
 }
 
 func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
@@ -166,9 +205,10 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 		node.subdivide()
 	}
 
-	octantcoords := GetOctantCoords(pos, node.Box)
-	linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
-	return node.Leaves[linear].RecursiveInsert(x, y, z, r, g, b)
+	// octantcoords := GetOctantCoords(pos, node.Box)
+	// linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
+	index := node.Box.Index(pos.X, pos.Y, pos.Z)
+	return node.Leaves[index].RecursiveInsert(x, y, z, r, g, b)
 }
 
 func (node *TreeNode) subdivide() {
@@ -179,19 +219,22 @@ func (node *TreeNode) subdivide() {
 }
 
 type Octree struct {
-	Root    TreeNode
-	Z, Y, X int // For compatibility with the old ones
+	Root TreeNode
 }
 
 func OctreeInit(size int) Octree {
 	// Currently, the whole tree is 'lopsided' to one side and not centered around zero
 	// to allow for direct translation from the array storage without coordinate system
 	// transformations
-	return Octree{*TreeNodeInit(BoxInit(0, 0, 0, size), nil), size, size, size} // Root has no stem
+	return Octree{*TreeNodeInit(BoxInit(0, 0, 0, size), nil)} // Root has no stem
 }
 
 func (oc *Octree) Insert(x, y, z int, r, g, b byte) bool {
 	return oc.Root.RecursiveInsert(x, y, z, r, g, b)
+}
+
+func (oc *Octree) GetVoxel(x, y, z int) *Voxel {
+	return oc.Root.query(te.Vec3i(x, y, z))
 }
 
 // Entry point for sending a ray into the tree
@@ -232,9 +275,9 @@ func (tw *TreeWalker) Ascend() {
 }
 
 // Drops down a level into the relative indexed node
-func (tw *TreeWalker) Descend(x, y, z int) {
-	idx := tw.Node.Box.index(x, y, z)
-	tw.Node = tw.Node.Leaves[idx]
+func (tw *TreeWalker) Descend(index int) {
+	// idx := tw.Node.Box.index(x, y, z)
+	tw.Node = tw.Node.Leaves[index]
 	tw.level += 1
 
 	if tw.level > 32 {
@@ -255,37 +298,39 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 
 	// Continue descending down into the smallest node that surrounds the position
 	for tw.Node.IsStem() {
-		oct := GetOctantCoords(pos, tw.Node.Box)
+		// oct := GetOctantCoords(pos, tw.Node.Box)
 		if !tw.Node.Box.surrounds(te.Vec3i(x, y, z)) {
 			panic("why is this happening to me")
 		}
-		tw.Descend(oct.X, oct.Y, oct.Z)
+		index := tw.Node.Box.Index(pos.X, pos.Y, pos.Z)
+		tw.Descend(index)
+		// tw.Descend(oct.X, oct.Y, oct.Z)
 	}
 }
 
-func GetOctantCoords(pos te.Vector3i, box Box) te.Vector3i {
-	if !box.surrounds(pos) {
-		panic("The box doesn't contain the voxel even")
-	}
-	center := box.center()
-	var x, y, z int
-	if pos.X < center.X {
-		x = 0
-	} else {
-		x = 1
-	}
-	if pos.Y < center.Y {
-		y = 0
-	} else {
-		y = 1
-	}
-	if pos.Z < center.Z {
-		z = 0
-	} else {
-		z = 1
-	}
-	return te.Vec3i(x, y, z)
-}
+// func GetOctantCoords(pos te.Vector3i, box Box) te.Vector3i {
+// 	if !box.surrounds(pos) {
+// 		panic("The box doesn't contain the voxel even")
+// 	}
+// 	center := box.center()
+// 	var x, y, z int
+// 	if pos.X < center.X {
+// 		x = 0
+// 	} else {
+// 		x = 1
+// 	}
+// 	if pos.Y < center.Y {
+// 		y = 0
+// 	} else {
+// 		y = 1
+// 	}
+// 	if pos.Z < center.Z {
+// 		z = 0
+// 	} else {
+// 		z = 1
+// 	}
+// 	return te.Vec3i(x, y, z)
+// }
 
 func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	rayhit := RayHit{Hit: false}
@@ -304,14 +349,15 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 			continue
 		}
 
-		if tw.Node.IsLeaf() {
-			return RayHit{
-				Hit:   true,
-				Color: tw.Node.Voxel.Color,
-			}
+		return RayHit{
+			Hit:      true,
+			Time:     data.Time,
+			Color:    tw.Node.Voxel.Color,
+			IntPos:   [3]int{x, y, z},
+			Position: pos,
+			Normal:   te.Vec3Splat(1),
+			Voxel:    &tw.Node.Voxel,
 		}
-
-		data.Time += VoxelRayDelta
 	}
 
 	return rayhit
