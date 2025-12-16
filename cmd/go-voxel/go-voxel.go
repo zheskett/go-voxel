@@ -22,7 +22,7 @@ func main() {
 	renderDist := float32(256.0)
 	size := 256
 	tree := voxel.OctreeInit(size)
-	world := voxel.VoxelWorld{Voxels: tree, Sun: voxel.DirLight{}, Lights: make([]vxl.LightPoint, 8)}
+	world := voxel.VoxelWorld{Voxels: tree, Sun: voxel.DirLight{}, Lights: make([]vxl.LightPoint, 0)}
 	world.X = size
 	world.Y = size
 	world.Z = size

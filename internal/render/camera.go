@@ -118,8 +118,8 @@ func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *Pixels, tick uint) {
 						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
 						// shadedintensity := GetPixelShading(vtree, hit, cam.RenderDistance)
-						shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
-						// shadedintensity := te.Vec3Splat(0.8)
+						// shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
+						shadedintensity := te.Vec3Splat(0.8)
 
 						// // Make sure that the minimum brightness even in complete shadow is 5%
 						shadedcolor := shadedintensity.ComponentMax(0.05).MulComponent(color).ComponentMin(255.0)

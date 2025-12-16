@@ -85,8 +85,8 @@ func GetPixelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) te.Vecto
 
 // Gets the per-voxel lighting from cache or calculating it
 func GetVoxelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32, tick uint) te.Vector3 {
-	var light vxl.VoxelLighting
 	voxel := hit.Voxel
+	var light vxl.VoxelLighting
 	if voxel.Light.Tick == tick {
 		light = voxel.Light
 	} else {

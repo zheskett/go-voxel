@@ -58,22 +58,20 @@ func VoxelDebugEmptyScene(vox *vxl.VoxelWorld) {
 
 // A small room with 3 colored lights and boxes everywhere
 func VoxelDebugSceneSmall(vox *vxl.VoxelWorld) {
-	brightness := 500
-	light := vxl.LightPoint{
+	brightness := 1500
+	light1 := vxl.LightPoint{
 		Position: te.Vec3(50, 15, 30),
 		Color:    te.Vec3(0.5, 0.5, 1.0).Mul(float32(brightness)),
 	}
-	vox.Lights = append(vox.Lights, light)
-	light = vxl.LightPoint{
-		Position: te.Vec3(20, 7, 22),
+	light2 := vxl.LightPoint{
+		Position: te.Vec3(11, 11, 11),
 		Color:    te.Vec3(1.0, 0.5, 0.5).Mul(float32(brightness)),
 	}
-	vox.Lights = append(vox.Lights, light)
-	light = vxl.LightPoint{
-		Position: te.Vec3(88, 30, 88),
+	light3 := vxl.LightPoint{
+		Position: te.Vec3(88, 32, 88),
 		Color:    te.Vec3(0.5, 1.0, 0.5).Mul(float32(brightness)),
 	}
-	vox.Lights = append(vox.Lights, light)
+	vox.Lights = append(vox.Lights, light1, light2, light3)
 
 	// Make a floor and ceiling
 	for i := range 100 {
@@ -107,15 +105,15 @@ func VoxelDebugSceneSmall(vox *vxl.VoxelWorld) {
 		}
 	}
 
-	for i := range 100 {
-		for j := range 100 {
-			for k := range 100 {
-				if i%10 == 0 && j%10 == 0 && k%10 == 0 {
-					vox.SetVoxel(i, j, k, 200, 200, 200)
-				}
-			}
-		}
-	}
+	// for i := range 100 {
+	// 	for j := range 100 {
+	// 		for k := range 100 {
+	// 			if i%10 == 0 && j%10 == 0 && k%10 == 0 {
+	// 				vox.SetVoxel(i, j, k, 200, 200, 200)
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 // A massive open scene with a bunch of random stuff

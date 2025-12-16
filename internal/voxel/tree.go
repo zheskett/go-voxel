@@ -40,43 +40,27 @@ func (box *Box) surrounds(v te.Vector3i) bool {
 // Slab-method of AABB and ray intersection
 // Returns (min_t, max_t) corresponding to the rays' entrance and exit time
 func (box *Box) RayIntersection(ray Ray) (float32, float32) {
-	tmin := float32(0.0)
-	tmax := math32.Inf(1)
-	dirs := ray.Dir.AsArray()
-	invs := ray.Dir.Inv().AsArray()
-	orig := ray.Origin.AsArray()
-	low := box.Low.AsArray()
-	high := box.high().AsArray()
+	invs := ray.Dir.Inv()
+	low := box.Low.AsVec3f()
+	high := box.high().AsVec3f()
 
-	// There is a branchless version I found on gamedev.stackexchange to replace it
-	// later
-	for i := range 3 {
-		if dirs[i] == 0.0 {
-			if orig[i] < float32(low[i]) || orig[i] >= float32(high[i]) {
-				return math32.Inf(1), math32.Inf(-1)
-			}
-			continue
-		}
-		invd := invs[i]
-		t0 := (float32(low[i]) - orig[i]) * invd
-		t1 := (float32(high[i]) - orig[i]) * invd
+	tx1 := (low.X - ray.Origin.X) * invs.X
+	tx2 := (high.X - ray.Origin.X) * invs.X
+	tmin := min(tx1, tx2)
+	tmax := max(tx1, tx2)
 
-		if invd < 0.0 {
-			t0, t1 = t1, t0
-		}
-		if t0 > tmin {
-			tmin = t0
-		}
-		if t1 < tmax {
-			tmax = t1
-		}
-		if tmax < tmin {
-			return math32.Inf(1), math32.Inf(-1) // There isn't an intersection
-		}
-	}
+	ty1 := (low.Y - ray.Origin.Y) * invs.Y
+	ty2 := (high.Y - ray.Origin.Y) * invs.Y
+	tmin = max(tmin, min(ty1, ty2))
+	tmax = min(tmax, max(ty1, ty2))
 
-	if tmin < 0.0 {
-		panic("this shouldn't happen")
+	tz1 := (low.Z - ray.Origin.Z) * invs.Z
+	tz2 := (high.Z - ray.Origin.Z) * invs.Z
+	tmin = max(tmin, min(tz1, tz2))
+	tmax = min(tmax, max(tz1, tz2))
+
+	if tmax < tmin || tmax < 0 {
+		return math32.Inf(1), math32.Inf(-1)
 	}
 
 	return tmin, tmax
@@ -122,6 +106,16 @@ func (box *Box) Index(x, y, z int) int {
 		index |= 1 << 0
 	}
 	return index
+}
+
+func (box *Box) GetHitNormal(hitpos te.Vector3) te.Vector3 {
+	low := box.Low.AsVec3f()
+	high := box.high().AsVec3f()
+	center := low.Add(high).Mul(0.5)
+
+	rel := hitpos.Sub(center)
+
+	return rel.Normalized()
 }
 
 type VoxelLighting struct {
@@ -245,10 +239,7 @@ func (oc *Octree) MarchRay(ray Ray) RayHit {
 	if tmin > tmax {
 		return rayhit // The ray misses the the whole tree
 	}
-
-	if tmin < 0.0 {
-		panic("should have been clamped by the slab AABB")
-	}
+	tmin = math32.Max(tmin, 0.0) // Clamp the ray to it's origin (can't go backward)
 
 	data := MarchDataInit(tmin, tmax, ray)
 	walker := TreeWalkerInit(oc)
@@ -355,7 +346,7 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 			Color:    tw.Node.Voxel.Color,
 			IntPos:   [3]int{x, y, z},
 			Position: pos,
-			Normal:   te.Vec3Splat(1),
+			Normal:   tw.Node.Box.GetHitNormal(pos),
 			Voxel:    &tw.Node.Voxel,
 		}
 	}
