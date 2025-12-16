@@ -5,6 +5,12 @@ import (
 	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
+const (
+	axisXBit = 1 << 2
+	axisYBit = 1 << 1
+	axisZBit = 1 << 0
+)
+
 // Axis Aligned Bounding Box
 type Box struct {
 	Low  te.Vector3i // Stores the low position of a cubic bounding box
@@ -85,39 +91,51 @@ func (box *Box) subdivide() [8]Box {
 }
 
 // Returns the linear index into the Box assuming relative coordinates [0, 2)
-// func (box *Box) index(x, y, z int) int {
-// 	if x > 1 || y > 1 || z > 1 || x < 0 || y < 0 || z < 0 {
-// 		panic("using relative indexing")
-// 	}
-// 	return (x << 2) | (y << 1) | z
-// }
-
-// Returns the linear index into the Box assuming relative coordinates [0, 2)
 func (box *Box) Index(x, y, z int) int {
 	center := box.center()
 	index := 0
 	if x >= center.X {
-		index |= 1 << 2
+		index |= axisXBit
 	}
 	if y >= center.Y {
-		index |= 1 << 1
+		index |= axisYBit
 	}
 	if z >= center.Z {
-		index |= 1 << 0
+		index |= axisZBit
 	}
 	return index
 }
 
-func (box *Box) GetHitNormal(hitpos te.Vector3) te.Vector3 {
+// This function is pretty slow and I am almost certain that there is a more
+// efficient way to get this but I don't know a method yet
+func (box *Box) GetHitNormal(ray Ray, time float32) te.Vector3 {
 	low := box.Low.AsVec3f()
 	high := box.high().AsVec3f()
-	center := low.Add(high).Mul(0.5)
+	hit := ray.Origin.Add(ray.Dir.Mul(time))
 
-	rel := hitpos.Sub(center)
+	eps := float32(1e-6)
+	var normal te.Vector3
+	switch {
+	case math32.Abs(hit.X-low.X) < eps:
+		normal = te.Vec3X().Neg()
+	case math32.Abs(hit.X-high.X) < eps:
+		normal = te.Vec3X()
+	case math32.Abs(hit.Y-low.Y) < eps:
+		normal = te.Vec3Y().Neg()
+	case math32.Abs(hit.Y-high.Y) < eps:
+		normal = te.Vec3Y()
+	case math32.Abs(hit.Z-low.Z) < eps:
+		normal = te.Vec3Z().Neg()
+	case math32.Abs(hit.Z-high.Z) < eps:
+		normal = te.Vec3Z()
+	default:
+		normal = te.Vec3X() // This avoids those dark edges from zero vectors
+	}
 
-	return rel.Normalized()
+	return normal
 }
 
+// The same as 'CachedLighting' but with a tick that it was set
 type VoxelLighting struct {
 	Light te.Vector3
 	Dir   te.Vector3
@@ -171,8 +189,6 @@ func (node *TreeNode) query(pos te.Vector3i) *Voxel {
 		return &node.Voxel
 	}
 	if node.IsStem() {
-		// octantcoords := GetOctantCoords(pos, node.Box)
-		// linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
 		index := node.Box.Index(pos.X, pos.Y, pos.Z)
 		return node.Leaves[index].query(pos)
 	}
@@ -199,8 +215,6 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 		node.subdivide()
 	}
 
-	// octantcoords := GetOctantCoords(pos, node.Box)
-	// linear := node.Box.index(octantcoords.X, octantcoords.Y, octantcoords.Z)
 	index := node.Box.Index(pos.X, pos.Y, pos.Z)
 	return node.Leaves[index].RecursiveInsert(x, y, z, r, g, b)
 }
@@ -255,7 +269,7 @@ func TreeWalkerInit(tree *Octree) TreeWalker {
 	return TreeWalker{&tree.Root, 0}
 }
 
-// Climbs the walker to the closest upward stem
+// Climbs the tree to the closest upward stem
 func (tw *TreeWalker) Ascend() {
 	tw.Node = tw.Node.Stem
 	tw.level -= 1
@@ -289,39 +303,13 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 
 	// Continue descending down into the smallest node that surrounds the position
 	for tw.Node.IsStem() {
-		// oct := GetOctantCoords(pos, tw.Node.Box)
 		if !tw.Node.Box.surrounds(te.Vec3i(x, y, z)) {
 			panic("why is this happening to me")
 		}
 		index := tw.Node.Box.Index(pos.X, pos.Y, pos.Z)
 		tw.Descend(index)
-		// tw.Descend(oct.X, oct.Y, oct.Z)
 	}
 }
-
-// func GetOctantCoords(pos te.Vector3i, box Box) te.Vector3i {
-// 	if !box.surrounds(pos) {
-// 		panic("The box doesn't contain the voxel even")
-// 	}
-// 	center := box.center()
-// 	var x, y, z int
-// 	if pos.X < center.X {
-// 		x = 0
-// 	} else {
-// 		x = 1
-// 	}
-// 	if pos.Y < center.Y {
-// 		y = 0
-// 	} else {
-// 		y = 1
-// 	}
-// 	if pos.Z < center.Z {
-// 		z = 0
-// 	} else {
-// 		z = 1
-// 	}
-// 	return te.Vec3i(x, y, z)
-// }
 
 func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	rayhit := RayHit{Hit: false}
@@ -330,7 +318,7 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 			break
 		}
 
-		pos := ray.Origin.Add(ray.Dir.Mul(data.Time))
+		pos := ray.Origin.Add(ray.Dir.Mul(data.Time + VoxelRayDelta))
 		x, y, z := int(math32.Floor(pos.X)), int(math32.Floor(pos.Y)), int(math32.Floor(pos.Z))
 		tw.GotoAbsolute(x, y, z)
 
@@ -346,7 +334,7 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 			Color:    tw.Node.Voxel.Color,
 			IntPos:   [3]int{x, y, z},
 			Position: pos,
-			Normal:   tw.Node.Box.GetHitNormal(pos),
+			Normal:   tw.Node.Box.GetHitNormal(ray, data.Time),
 			Voxel:    &tw.Node.Voxel,
 		}
 	}

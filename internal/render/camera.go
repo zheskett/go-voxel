@@ -1,4 +1,3 @@
-// There are duplicates of all the motion functions, with an FPS version, that doesn't include rolling
 package render
 
 import (
@@ -59,10 +58,12 @@ func CameraInit() Camera {
 	}
 }
 
-func (cam *Camera) UpdateRotationFPS(pitch, yaw float32) {
+func (cam *Camera) UpdateRotation(pitch, yaw float32) {
 	cam.Pitch += pitch * cam.Lookspeed
 	cam.Yaw += yaw * cam.Lookspeed
+	// Confine pitch and yaw
 	cam.Pitch = math32.Min(math32.Max(cam.Pitch, -math32.Pi/2*0.99), math32.Pi/2*0.99)
+	cam.Yaw = math32.Mod(cam.Yaw, 2.0*math32.Pi)
 
 	front := te.Rotate3DY(cam.Yaw).Mul(te.Rotate3DX(cam.Pitch)).MulVec(te.Vec3Z())
 	right := front.Cross(cam.Wupvec)
@@ -73,7 +74,7 @@ func (cam *Camera) UpdateRotationFPS(pitch, yaw float32) {
 	cam.Uvec = up.Normalized()
 }
 
-func (cam *Camera) UpdatePositionFPS(dx, dy, dz float32, frame *FrameData) {
+func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *FrameData) {
 	dx, dy, dz = te.Vec3(dx, dy, dz).NormalizedOrZero().Mul(cam.Movespeed * frame.Deltat).Elms()
 	clampedfront := te.Vec3(cam.Fvec.X, 0, cam.Fvec.Z).Normalized()
 	forward := clampedfront.Mul(dz)
@@ -118,8 +119,8 @@ func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *Pixels, tick uint) {
 						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
 						// shadedintensity := GetPixelShading(vtree, hit, cam.RenderDistance)
-						// shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
-						shadedintensity := te.Vec3Splat(0.8)
+						shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
+						// shadedintensity := te.Vec3Splat(0.8)
 
 						// // Make sure that the minimum brightness even in complete shadow is 5%
 						shadedcolor := shadedintensity.ComponentMax(0.05).MulComponent(color).ComponentMin(255.0)
@@ -153,5 +154,5 @@ func (cam *Camera) UpdateCamInput(frame *FrameData) {
 	if frame.Keys[glfw.KeyLeftShift] {
 		ty++
 	}
-	cam.UpdatePositionFPS(float32(tx), float32(ty), float32(tz), frame)
+	cam.UpdatePosition(float32(tx), float32(ty), float32(tz), frame)
 }

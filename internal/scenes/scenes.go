@@ -10,19 +10,19 @@ import (
 
 func VoxelDebugEmptyScene(vox *vxl.VoxelWorld) {
 	brightness := 10000.0
-	vox.Lights = append(vox.Lights, vxl.LightPoint{
+	vox.Lights = append(vox.Lights, vxl.PointLight{
 		Position: te.Vec3(float32(vox.X/2), 70, float32(vox.Z/2)),
 		Color:    te.Vec3(1.0, 0.95, 0.95).Mul(float32(brightness)),
 	})
-	vox.Lights = append(vox.Lights, vxl.LightPoint{
+	vox.Lights = append(vox.Lights, vxl.PointLight{
 		Position: te.Vec3(10, 10, 10),
 		Color:    te.Vec3(1.0, 0.3, 0.3).Mul(float32(brightness / 4.0)),
 	})
-	vox.Lights = append(vox.Lights, vxl.LightPoint{
+	vox.Lights = append(vox.Lights, vxl.PointLight{
 		Position: te.Vec3(10, 10, float32(vox.Y-10)),
 		Color:    te.Vec3(0.3, 1.0, 0.3).Mul(float32(brightness / 4.0)),
 	})
-	vox.Lights = append(vox.Lights, vxl.LightPoint{
+	vox.Lights = append(vox.Lights, vxl.PointLight{
 		Position: te.Vec3(float32(vox.X-10), 10, 10),
 		Color:    te.Vec3(0.3, 0.3, 1.0).Mul(float32(brightness / 4.0)),
 	})
@@ -59,15 +59,15 @@ func VoxelDebugEmptyScene(vox *vxl.VoxelWorld) {
 // A small room with 3 colored lights and boxes everywhere
 func VoxelDebugSceneSmall(vox *vxl.VoxelWorld) {
 	brightness := 1500
-	light1 := vxl.LightPoint{
+	light1 := vxl.PointLight{
 		Position: te.Vec3(50, 15, 30),
 		Color:    te.Vec3(0.5, 0.5, 1.0).Mul(float32(brightness)),
 	}
-	light2 := vxl.LightPoint{
+	light2 := vxl.PointLight{
 		Position: te.Vec3(11, 11, 11),
 		Color:    te.Vec3(1.0, 0.5, 0.5).Mul(float32(brightness)),
 	}
-	light3 := vxl.LightPoint{
+	light3 := vxl.PointLight{
 		Position: te.Vec3(88, 32, 88),
 		Color:    te.Vec3(0.5, 1.0, 0.5).Mul(float32(brightness)),
 	}
@@ -119,7 +119,7 @@ func VoxelDebugSceneSmall(vox *vxl.VoxelWorld) {
 // A massive open scene with a bunch of random stuff
 func VoxelDebugSceneBig(vox *vxl.VoxelWorld) {
 	brightness := 15000
-	light := vxl.LightPoint{
+	light := vxl.PointLight{
 		Position: te.Vec3(64, 32, 96),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
@@ -202,31 +202,31 @@ func VoxelDebugSceneBig(vox *vxl.VoxelWorld) {
 
 func VoxelDebugSceneHugeBunny(vox *vxl.VoxelWorld) {
 	brightness := 55000
-	light := vxl.LightPoint{
+	light := vxl.PointLight{
 		Position: te.Vec3(64, 32, 96),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light2 := vxl.LightPoint{
+	light2 := vxl.PointLight{
 		Position: te.Vec3(500, 32, 96),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light3 := vxl.LightPoint{
+	light3 := vxl.PointLight{
 		Position: te.Vec3(500, 32, 500),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light4 := vxl.LightPoint{
+	light4 := vxl.PointLight{
 		Position: te.Vec3(500, 32, 256),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light5 := vxl.LightPoint{
+	light5 := vxl.PointLight{
 		Position: te.Vec3(500, 256, 256),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light6 := vxl.LightPoint{
+	light6 := vxl.PointLight{
 		Position: te.Vec3(256, 256, 256),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light7 := vxl.LightPoint{
+	light7 := vxl.PointLight{
 		Position: te.Vec3(96, 32, 500),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
@@ -244,40 +244,43 @@ func VoxelDebugSceneHugeBunny(vox *vxl.VoxelWorld) {
 
 func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
 	brightness := 30000
-	light := vxl.LightPoint{
+	light := vxl.PointLight{
 		Position: te.Vec3(4, 2, 6),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 2)),
 	}
-	light2 := vxl.LightPoint{
+	light2 := vxl.PointLight{
 		Position: te.Vec3(500, 32, 96),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light3 := vxl.LightPoint{
+	light3 := vxl.PointLight{
 		Position: te.Vec3(500, 32, 500),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light4 := vxl.LightPoint{
+	light4 := vxl.PointLight{
 		Position: te.Vec3(500, 32, 256),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light5 := vxl.LightPoint{
+	light5 := vxl.PointLight{
 		Position: te.Vec3(256, 400, 256),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	light6 := vxl.LightPoint{
+	light6 := vxl.PointLight{
 		Position: te.Vec3(180, 200, 200),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 4)),
 	}
-	light7 := vxl.LightPoint{
+	light7 := vxl.PointLight{
 		Position: te.Vec3(1, 140, 250),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
 	}
-	light8 := vxl.LightPoint{
+	light8 := vxl.PointLight{
 		Position: te.Vec3(1, 140, 0),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
 	}
-	// *vox = vxl.VoxelWorldInit(512, 512, 512)
-	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7, light8)
+	light9 := vxl.PointLight{
+		Position: te.Vec3(float32(vox.X)/2, float32(vox.Y)/2, float32(vox.Z)/2),
+		Color:    te.Vec3(1.0, 7.0, 7.0).Mul(float32(brightness / 2)),
+	}
+	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7, light8, light9)
 
 	// Fall Tree
 	fallTree, err := vxl.ConvertVoxPath("assets/FallTree.vox", false, true, false)

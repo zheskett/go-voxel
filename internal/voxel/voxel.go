@@ -61,18 +61,6 @@ func (bits *BitArray) Clear() {
 	}
 }
 
-// Just a point light
-type LightPoint struct {
-	Position te.Vector3
-	Color    te.Vector3 // Can have mag > 1 for a bright light
-}
-
-// Lighting info for a single voxel
-type CachedLighting struct {
-	Light te.Vector3 // The cumulative lighting it gets
-	Dir   te.Vector3 // The weighted direction of all lights in the scene w.r.t. that voxel
-}
-
 // Naive storage as an array
 type Voxels struct {
 	Z, Y, X  int
@@ -84,7 +72,7 @@ type Voxels struct {
 	LightCached BitArray // Whether or not we already having lighting data for that frame
 	Lighting    []CachedLighting
 
-	Lights []LightPoint // Shouldn't be in here probably, maybe in another larger structure holding all worlds stuff
+	Lights []PointLight // Shouldn't be in here probably, maybe in another larger structure holding all worlds stuff
 }
 
 func VoxelsInit(x, y, z int) Voxels {
@@ -92,7 +80,7 @@ func VoxelsInit(x, y, z int) Voxels {
 	color := make([][3]byte, z*y*x)
 	lighting := make([]CachedLighting, z*y*x)
 	lightcache := BitArrayInit(z * y * x)
-	lights := make([]LightPoint, 0)
+	lights := make([]PointLight, 0)
 	for i := 0; i < z*y*x; i++ {
 		color[i] = [3]byte{0, 0, 0}
 	}
@@ -265,6 +253,18 @@ func (vox *Voxels) UpdateInputs(window *glfw.Window, pos te.Vector3, dir te.Vect
 	}
 }
 
+// Just a point light
+type PointLight struct {
+	Position te.Vector3
+	Color    te.Vector3 // Can have mag > 1 for a bright light
+}
+
+// Lighting info for a single voxel
+type CachedLighting struct {
+	Light te.Vector3 // The cumulative lighting it gets
+	Dir   te.Vector3 // The weighted direction of all lights in the scene w.r.t. that voxel
+}
+
 // A directional light source which emulates a point light at infinity with no intensity falloff
 type DirLight struct {
 	Dir te.Vector3
@@ -276,7 +276,7 @@ type VoxelWorld struct {
 	X, Y, Z int
 	Voxels  Octree
 	Sun     DirLight
-	Lights  []LightPoint
+	Lights  []PointLight
 }
 
 func (vox *VoxelWorld) SetVoxel(x, y, z int, r, g, b byte) {

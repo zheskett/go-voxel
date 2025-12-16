@@ -55,7 +55,7 @@ func (eng *Engine) SetScrollCallback() {
 func (eng *Engine) SetMouseCallback() {
 	eng.Window.SetCursorPosCallback(func(_ *glfw.Window, xpos float64, ypos float64) {
 		dx, dy := eng.Framedata.GetMouseDelta(xpos, ypos)
-		eng.Camera.UpdateRotationFPS(dy, dx)
+		eng.Camera.UpdateRotation(dy, dx)
 	})
 }
 

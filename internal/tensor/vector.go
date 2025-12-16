@@ -325,9 +325,34 @@ func Vec3i(x, y, z int) Vector3i {
 	return Vector3i{x, y, z}
 }
 
+// Creates the 3D zero vector
+func Vec3iZero() Vector3i {
+	return Vector3i{X: 0, Y: 0, Z: 0}
+}
+
 // Creates a 3D vector with similar components
 func Vec3iSplat(c int) Vector3i {
 	return Vec3i(c, c, c)
+}
+
+// Creates an x unit vector
+func Vec3iX() Vector3i {
+	return Vector3i{X: 1, Y: 0, Z: 0}
+}
+
+// Creates an y unit vector
+func Vec3iY() Vector3i {
+	return Vector3i{X: 0, Y: 1, Z: 0}
+}
+
+// Creates an z unit vector
+func Vec3iZ() Vector3i {
+	return Vector3i{X: 0, Y: 0, Z: 1}
+}
+
+// Returns the Elements of the vector
+func (v Vector3i) Elms() (int, int, int) {
+	return v.X, v.Y, v.Z
 }
 
 // Returns an array of the vector components in order
@@ -359,6 +384,11 @@ func (v1 Vector3i) Mul(s int) Vector3i {
 // Need to be careful because this is integer division
 func (v1 Vector3i) Div(s int) Vector3i {
 	return Vec3i(v1.X/s, v1.Y/s, v1.Z/s)
+}
+
+// Returns the dot product of two vectors
+func (v1 Vector3i) Dot(v2 Vector3i) int {
+	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z
 }
 
 // End Vector3i Functions
