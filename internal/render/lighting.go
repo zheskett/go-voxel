@@ -9,7 +9,7 @@ import (
 // The way the Unity HDRP prevents the brightspots is by just clamping the distance
 // to prevent lights getting too bright
 const (
-	MinDistance float32 = 8.0
+	MinDistance = 16.0
 )
 
 // Performs the per-pixel lighting by sending secondary rays back towards all of the lights in the scene
@@ -92,7 +92,7 @@ func shadeVoxel(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) vxl.VoxelLigh
 		recastray := vxl.Ray{
 			Origin: recastpos,
 			Dir:    lightdir,
-			Tmax:   math32.Min(lightdist-distanceoutvoxel-vxl.VoxelRayDelta, tmax),
+			Tmax:   min(lightdist-distanceoutvoxel-vxl.VoxelRayDelta, tmax),
 		}
 
 		shadowcast := vox.Voxels.MarchRay(recastray)
@@ -110,5 +110,5 @@ func shadeVoxel(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) vxl.VoxelLigh
 }
 
 func lightFalloffCurve(dist float32) float32 {
-	return 1.0 / math32.Max(dist*dist, MinDistance*MinDistance)
+	return 1.0 / max(dist*dist, MinDistance*MinDistance)
 }

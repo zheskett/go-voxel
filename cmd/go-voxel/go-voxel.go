@@ -33,13 +33,14 @@ func main() {
 	case 1:
 		scenes.VoxelDebugSceneBig(&world)
 	case 2:
+		renderDist = 1024.0
 		scenes.VoxelDebugEmptyScene(&world)
 	case 3:
-		renderDist = 560.0
+		renderDist = 1024.0
 		world.Voxels = voxel.OctreeInit(512)
 		scenes.VoxelDebugSceneHugeBunny(&world)
 	case 4:
-		renderDist = 1024
+		renderDist = 1024.0
 		world.Voxels = voxel.OctreeInit(2048)
 		scenes.VoxelDebugSceneTrees(&world)
 	default:
@@ -74,8 +75,8 @@ func main() {
 
 func LayoutCoordinateSystem(vox voxel.VoxelWorld) {
 	for i := range 16 {
-		vox.SetVoxel(i, 0, 0, 255, 0, 0)
-		vox.SetVoxel(0, i, 0, 0, 255, 0)
-		vox.SetVoxel(0, 0, i, 0, 0, 255)
+		vox.SetVoxel(i, 1, 1, 255, 0, 0)
+		vox.SetVoxel(1, i, 1, 0, 255, 0)
+		vox.SetVoxel(1, 1, i, 0, 0, 255)
 	}
 }

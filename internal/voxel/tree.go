@@ -272,9 +272,8 @@ func (oc *Octree) MarchRay(ray Ray) RayHit {
 	if tmin > tmax {
 		return rayhit // The ray misses the the whole tree
 	}
-	tmin = math32.Max(tmin, 0.0) // Clamp the ray to it's origin (can't go backward)
 
-	data := MarchDataInit(tmin, tmax, ray)
+	data := MarchDataInit(max(0.0, tmin), min(tmax, ray.Tmax), ray)
 	walker := TreeWalkerInit(oc)
 	return walker.StateMarchRay(ray, data)
 }
@@ -348,7 +347,7 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 
 		if tw.Node.IsEmpty() {
 			_, nodeexit := tw.Node.Box.RayIntersection(ray)
-			data.Time = math32.Max(nodeexit, data.Time+VoxelRayDelta)
+			data.Time = max(nodeexit, data.Time+VoxelRayDelta)
 		} else if tw.Node.IsLeaf() {
 			return RayHit{
 				Hit:      true,

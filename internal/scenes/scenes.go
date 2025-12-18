@@ -58,10 +58,10 @@ func VoxelDebugEmptyScene(vox *vxl.VoxelWorld) {
 
 // A small room with 3 colored lights and boxes everywhere
 func VoxelDebugSceneSmall(vox *vxl.VoxelWorld) {
-	brightness := 10000
+	brightness := 750
 	light1 := vxl.PointLight{
-		Position: te.Vec3(50, 20, 50),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+		Position: te.Vec3(80, 20, 11),
+		Color:    te.Vec3(0.3, 0.3, 1.0).Mul(float32(brightness)),
 	}
 	light2 := vxl.PointLight{
 		Position: te.Vec3(11, 11, 11),

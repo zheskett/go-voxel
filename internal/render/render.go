@@ -61,53 +61,15 @@ func (data *FrameData) GetMouseDelta(mxc, myc float64) (float32, float32) {
 	return dx, dy
 }
 
-// Pixels contains the data for each pixel on the screen.
-// Every pixel is 4 bytes, RGBA
-type Pixels struct {
-	data   []byte
-	Height int
-	Width  int
-}
-
-func PixelsInit(width, height int) Pixels {
-	data := make([]byte, width*height*4)
-	for i := 0; i < width*height*4; i++ {
-		data[i] = 0
-	}
-	return Pixels{data, height, width}
-}
-
-func (px *Pixels) FillPixels(r, g, b byte) {
-	for i := 0; i < px.Width*px.Height; i++ {
-		px.data[4*i+0] = r
-		px.data[4*i+1] = g
-		px.data[4*i+2] = b
-	}
-}
-
-func (px *Pixels) SetPixel(x, y int, r, g, b byte) {
-	px.data[4*(px.Width*y+x)+0] = r
-	px.data[4*(px.Width*y+x)+1] = g
-	px.data[4*(px.Width*y+x)+2] = b
-}
-
-func (px *Pixels) GetPixel(x, y int) [3]byte {
-	return [3]byte{
-		px.data[4*(px.Width*y+x)+0],
-		px.data[4*(px.Width*y+x)+1],
-		px.data[4*(px.Width*y+x)+2],
-	}
-}
-
-func (px *Pixels) Surrounds(x, y int) bool {
-	return x >= 0 && x < px.Width && y >= 0 && y < px.Height
-}
-
 // RenderManager contains state for the rendering
 type RenderManager struct {
+	// Handles for glfw draw call
 	renderTexture uint32
 	fbo           uint32
-	Pixels        Pixels
+
+	// Buffers that are used for the software renderer to write into
+	Pixels Pixels      // Color buffer (displayed to screen)
+	Depth  DepthBuffer // Depth buffer
 }
 
 // RenderManagerInit initializes the render manager
