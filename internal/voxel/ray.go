@@ -30,6 +30,7 @@ type Ray struct {
 
 // Returned information after a ray is cast into the scene
 type RayHit struct {
+	// TODO: remove like half of these fields -- doesn't make sense to store all this it is just easy
 	Hit      bool
 	Time     float32
 	Color    [3]byte

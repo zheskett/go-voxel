@@ -122,8 +122,12 @@ func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *Pixels, tick uint) {
 						shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
 						// shadedintensity := te.Vec3Splat(0.8)
 
-						// // Make sure that the minimum brightness even in complete shadow is 5%
-						shadedcolor := shadedintensity.ComponentMax(0.05).MulComponent(color).ComponentMin(255.0)
+						if math32.IsNaN(shadedintensity.X) || math32.IsNaN(shadedintensity.Y) || math32.IsNaN(shadedintensity.Z) {
+							panic("I don't know how this keeps happening")
+						}
+
+						// // Make sure that the minimum brightness even in complete shadow is 10%
+						shadedcolor := shadedintensity.ComponentMax(0.1).MulComponent(color).ComponentMin(254.9999)
 
 						pix.SetPixel(col, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
 					}

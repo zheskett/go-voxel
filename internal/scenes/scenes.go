@@ -58,10 +58,10 @@ func VoxelDebugEmptyScene(vox *vxl.VoxelWorld) {
 
 // A small room with 3 colored lights and boxes everywhere
 func VoxelDebugSceneSmall(vox *vxl.VoxelWorld) {
-	brightness := 1500
+	brightness := 10000
 	light1 := vxl.PointLight{
-		Position: te.Vec3(50, 15, 30),
-		Color:    te.Vec3(0.5, 0.5, 1.0).Mul(float32(brightness)),
+		Position: te.Vec3(50, 20, 50),
+		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
 	light2 := vxl.PointLight{
 		Position: te.Vec3(11, 11, 11),
@@ -304,7 +304,7 @@ func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
 		panic(err)
 	}
 	menger.Squash()
-	vox.AddVoxelObj(menger, 0, vox.Y, 250)
+	vox.AddVoxelObj(menger, 200, vox.Y-100, 300)
 
 	// Monument
 	monu, err := vxl.ConvertVoxPath("assets/monu10.vox", false, true, false)
@@ -312,7 +312,7 @@ func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
 		panic(err)
 	}
 	monu.Squash()
-	vox.AddVoxelObj(monu, 0, vox.Y-int(monu.Y)-250, 200)
+	vox.AddVoxelObj(monu, 190, vox.Y-int(monu.Y)-150, 200)
 
 	// kloster
 	kloster, err := vxl.ConvertVoxPath("assets/kloster.vox", false, true, false)

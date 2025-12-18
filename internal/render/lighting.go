@@ -9,7 +9,7 @@ import (
 // The way the Unity HDRP prevents the brightspots is by just clamping the distance
 // to prevent lights getting too bright
 const (
-	MinDistance float32 = 16.0
+	MinDistance float32 = 8.0
 )
 
 // Performs the per-pixel lighting by sending secondary rays back towards all of the lights in the scene
@@ -19,6 +19,14 @@ func GetPixelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) te.Vecto
 	for _, light := range vox.Lights {
 		lightpos := light.Position.Sub(hit.Position)
 		lightdist := lightpos.Len()
+
+		// This is such a mess with all these checks and stuff everywhere -- these will be
+		// removed I just don't understand why NaNs are showing up everywhere I don't think
+		// anything changed
+		if lightdist <= 0.0 {
+			continue
+		}
+
 		lightdir := lightpos.Div(lightdist)
 		recastpos := hit.Position.Add(hit.Normal.Mul(vxl.VoxelRayDelta))
 		recastray := vxl.Ray{
@@ -43,7 +51,10 @@ func GetPixelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) te.Vecto
 // Gets the per-voxel lighting from cache or calculating it
 func GetVoxelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32, tick uint) te.Vector3 {
 	var light vxl.VoxelLighting
-	if hit.Voxel.Light.Tick != 0 {
+	// The current solution for "baked" lighting, basically only gets calculated one
+	// time for each voxel when it first gets hit by a ray and otherwise reuses the
+	// value
+	if /* hit.Voxel.Light.Tick == tick */ hit.Voxel.Light.Tick != 0 {
 		light = hit.Voxel.Light
 	} else {
 		light = shadeVoxel(vox, hit, tmax)
@@ -70,6 +81,11 @@ func shadeVoxel(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) vxl.VoxelLigh
 	for _, light := range vox.Lights {
 		lightpos := light.Position.Sub(voxelcenter)
 		lightdist := lightpos.Len()
+
+		if lightdist <= 0.0 {
+			continue
+		}
+
 		lightdir := lightpos.Div(lightdist)
 		outsidedirec := lightdir.SignVec() // Shift over to one of the corners for the shadow vector's origin
 		recastpos := voxelcenter.Add(outsidedirec.Mul(distanceoutvoxel + vxl.VoxelRayDelta))
@@ -88,7 +104,7 @@ func shadeVoxel(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) vxl.VoxelLigh
 			direction = direction.Add(lightpos)
 		}
 	}
-	direction = direction.Normalized()
+	direction = direction.NormalizedOrZero()
 
 	return vxl.VoxelLighting{Light: intensity, Dir: direction}
 }

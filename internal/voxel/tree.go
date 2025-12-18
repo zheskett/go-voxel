@@ -46,6 +46,7 @@ func (box *Box) surrounds(v te.Vector3i) bool {
 // Slab-method of AABB and ray intersection
 // Returns (min_t, max_t) corresponding to the rays' entrance and exit time
 func (box *Box) RayIntersection(ray Ray) (float32, float32) {
+	// TODO: This needs to not be recalcualted each time -- either take MarchData or store that on the ray
 	invs := ray.Dir.Inv()
 	low := box.Low.AsVec3f()
 	high := box.high().AsVec3f()
@@ -108,28 +109,42 @@ func (box *Box) Index(x, y, z int) int {
 
 // This function is pretty slow and I am almost certain that there is a more
 // efficient way to get this but I don't know a method yet
-func (box *Box) GetHitNormal(ray Ray, time float32) te.Vector3 {
+func (box *Box) GetHitNormal(ray Ray) te.Vector3 {
+	invs := ray.Dir.Inv()
 	low := box.Low.AsVec3f()
 	high := box.high().AsVec3f()
-	hit := ray.Origin.Add(ray.Dir.Mul(time))
 
-	eps := float32(1e-6)
-	var normal te.Vector3
-	switch {
-	case math32.Abs(hit.X-low.X) < eps:
-		normal = te.Vec3X().Neg()
-	case math32.Abs(hit.X-high.X) < eps:
-		normal = te.Vec3X()
-	case math32.Abs(hit.Y-low.Y) < eps:
-		normal = te.Vec3Y().Neg()
-	case math32.Abs(hit.Y-high.Y) < eps:
-		normal = te.Vec3Y()
-	case math32.Abs(hit.Z-low.Z) < eps:
-		normal = te.Vec3Z().Neg()
-	case math32.Abs(hit.Z-high.Z) < eps:
-		normal = te.Vec3Z()
-	default:
-		normal = te.Vec3X() // This avoids those dark edges from zero vectors
+	tx1 := (low.X - ray.Origin.X) * invs.X
+	tx2 := (high.X - ray.Origin.X) * invs.X
+	ty1 := (low.Y - ray.Origin.Y) * invs.Y
+	ty2 := (high.Y - ray.Origin.Y) * invs.Y
+	tz1 := (low.Z - ray.Origin.Z) * invs.Z
+	tz2 := (high.Z - ray.Origin.Z) * invs.Z
+
+	tex := min(tx1, tx2)
+	tey := min(ty1, ty2)
+	tez := min(tz1, tz2)
+
+	// Goodness gracious
+	normal := te.Vec3Zero()
+	if tex > tey && tex > tez {
+		if ray.Dir.X > 0.0 {
+			normal = te.Vec3X().Neg()
+		} else {
+			normal = te.Vec3X()
+		}
+	} else if tey > tez {
+		if ray.Dir.Y > 0.0 {
+			normal = te.Vec3Y().Neg()
+		} else {
+			normal = te.Vec3Y()
+		}
+	} else {
+		if ray.Dir.Z > 0.0 {
+			normal = te.Vec3Z().Neg()
+		} else {
+			normal = te.Vec3Z()
+		}
 	}
 
 	return normal
@@ -142,6 +157,10 @@ type VoxelLighting struct {
 	Tick  uint
 }
 
+func VoxelLightingInit() VoxelLighting {
+	return VoxelLighting{Light: te.Vec3Zero(), Dir: te.Vec3Zero(), Tick: 0}
+}
+
 type Voxel struct {
 	Present bool
 	Color   [3]byte
@@ -149,7 +168,7 @@ type Voxel struct {
 }
 
 func VoxelInit() Voxel {
-	return Voxel{Present: false}
+	return Voxel{Present: false, Light: VoxelLightingInit()}
 }
 
 // Doubly linked octant node
@@ -281,7 +300,6 @@ func (tw *TreeWalker) Ascend() {
 
 // Drops down a level into the relative indexed node
 func (tw *TreeWalker) Descend(index int) {
-	// idx := tw.Node.Box.index(x, y, z)
 	tw.Node = tw.Node.Leaves[index]
 	tw.level += 1
 
@@ -303,7 +321,7 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 
 	// Continue descending down into the smallest node that surrounds the position
 	for tw.Node.IsStem() {
-		if !tw.Node.Box.surrounds(te.Vec3i(x, y, z)) {
+		if !tw.Node.Box.surrounds(pos) {
 			panic("why is this happening to me")
 		}
 		index := tw.Node.Box.Index(pos.X, pos.Y, pos.Z)
@@ -313,7 +331,13 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 
 func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	rayhit := RayHit{Hit: false}
-	for {
+
+	// This keeps endlessly looping becuase of null rays? This just
+	// keeps the program from freezing until I can figure out how that is happening
+	//
+	// It has something to do with bounce-rays from lighting being cast on null-hits.
+	// The error is likely coming from floating point errors in in grazing rays
+	for range 100 {
 		if data.Time > data.Tmax {
 			break
 		}
@@ -325,17 +349,16 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 		if tw.Node.IsEmpty() {
 			_, nodeexit := tw.Node.Box.RayIntersection(ray)
 			data.Time = math32.Max(nodeexit, data.Time+VoxelRayDelta)
-			continue
-		}
-
-		return RayHit{
-			Hit:      true,
-			Time:     data.Time,
-			Color:    tw.Node.Voxel.Color,
-			IntPos:   [3]int{x, y, z},
-			Position: pos,
-			Normal:   tw.Node.Box.GetHitNormal(ray, data.Time),
-			Voxel:    &tw.Node.Voxel,
+		} else if tw.Node.IsLeaf() {
+			return RayHit{
+				Hit:      true,
+				Time:     data.Time,
+				Color:    tw.Node.Voxel.Color,
+				IntPos:   [3]int{x, y, z},
+				Position: ray.Origin.Add(ray.Dir.Mul(data.Time)),
+				Normal:   tw.Node.Box.GetHitNormal(ray),
+				Voxel:    &tw.Node.Voxel,
+			}
 		}
 	}
 
