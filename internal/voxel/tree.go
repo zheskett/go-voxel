@@ -95,6 +95,9 @@ func (box *Box) subdivide() [8]Box {
 func (box *Box) Index(x, y, z int) int {
 	center := box.center()
 	index := 0
+	if !box.surrounds(te.Vec3i(x, y, z)) {
+		panic("This index function is only valid for a point containted within the box")
+	}
 	if x >= center.X {
 		index |= axisXBit
 	}

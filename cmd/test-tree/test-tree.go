@@ -1,84 +1,41 @@
 package main
 
 import (
-	"fmt"
+	"os"
+	"runtime/pprof"
 
+	"github.com/zheskett/go-voxel/internal/engine"
+	"github.com/zheskett/go-voxel/internal/render"
+	"github.com/zheskett/go-voxel/internal/scenes"
+	"github.com/zheskett/go-voxel/internal/tensor"
 	"github.com/zheskett/go-voxel/internal/voxel"
 )
 
 func main() {
-	size := 128
-	tree := voxel.OctreeInit(size)
-	for i := range size {
-		if !tree.Insert(i, i, i, 0, 0, 0) {
-			panic("error inserting into tree")
-		}
+	file, err := os.Create("cpu.pprof")
+	if err != nil {
+		panic(err)
 	}
+	defer file.Close()
 
-	depth := maxDepth(&tree)
-	voxels := countVoxels(&tree)
-	fmt.Printf("max tree depth: %d\n", depth)
-	fmt.Printf("voxels in the tree: %d\n", voxels)
+	tree := voxel.OctreeInit(4096)
+	cam := render.CameraInit()
+	cam.Lookspeed = 0.005
+	cam.Fov = 90
+	cam.Aspect = float32(400) / float32(300)
+	cam.RenderDistance = 4096
+	cam.Pos = tensor.Vec3(100, 100, 100)
+	engine := engine.Engine{}
+	engine.Camera = cam
+	engine.Voxels = voxel.VoxelWorld{Voxels: tree, Sun: voxel.DirLight{}, Lights: make([]voxel.PointLight, 0)}
+	engine.Renderer = &render.RenderManager{Pixels: render.PixelsInit(400, 300)}
+	scenes.VoxelDebugSceneBig(&engine.Voxels)
 
-	walker := voxel.TreeWalkerInit(&tree)
-	walker.GotoAbsolute(64, 0, 64)
-	assert(walker.Node.Box.Size == 64)
-	walker.GotoAbsolute(64, 64, 64)
-	assert(walker.Node.Box.Size == 1)
-	walker.GotoAbsolute(64, 70, 64)
-	fmt.Printf("node: %v", walker.Node.Box)
+	pprof.StartCPUProfile(file)
+	defer pprof.StopCPUProfile()
 
-	fmt.Printf("done\n")
-}
-
-func assert(arg bool) {
-	if !arg {
-		panic("assert failed")
+	for range 1000 {
+		engine.Camera.RenderVoxels(&engine.Voxels, &engine.Renderer.Pixels, engine.Framedata.Tick)
+		engine.Camera.UpdateRotation(1, 1)
 	}
-}
-
-func countVoxels(br *voxel.Octree) int {
-	return recurCountVoxels(&br.Root)
-}
-
-func recurCountVoxels(node *voxel.TreeNode) int {
-	if node == nil {
-		return 0
-	}
-	if node.IsLeaf() {
-		count := 0
-		if node.Voxel.Present {
-			count++
-		}
-		return count
-	}
-	if node.IsStem() {
-		count := 0
-		for i := range 8 {
-			count += recurCountVoxels(node.Leaves[i])
-		}
-		return count
-	}
-	return 0
-}
-
-func maxDepth(br *voxel.Octree) int {
-	return recurMaxDepth(&br.Root)
-}
-
-func recurMaxDepth(node *voxel.TreeNode) int {
-	if node.IsLeaf() {
-		return 0
-	}
-	if node.IsStem() {
-		maxdepth := 0
-		for i := range 8 {
-			if node.Leaves[i] != nil {
-				depth := recurMaxDepth(node.Leaves[i])
-				maxdepth = max(maxdepth, depth)
-			}
-		}
-		return maxdepth + 1
-	}
-	return 0
 }

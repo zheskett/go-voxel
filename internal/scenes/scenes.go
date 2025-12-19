@@ -105,15 +105,15 @@ func VoxelDebugSceneSmall(vox *vxl.VoxelWorld) {
 		}
 	}
 
-	// for i := range 100 {
-	// 	for j := range 100 {
-	// 		for k := range 100 {
-	// 			if i%10 == 0 && j%10 == 0 && k%10 == 0 {
-	// 				vox.SetVoxel(i, j, k, 200, 200, 200)
-	// 			}
-	// 		}
-	// 	}
-	// }
+	for i := range 100 {
+		for j := range 100 {
+			for k := range 100 {
+				if i%10 == 0 && j%10 == 0 && k%10 == 0 {
+					vox.SetVoxel(i, j, k, 200, 200, 200)
+				}
+			}
+		}
+	}
 }
 
 // A massive open scene with a bunch of random stuff

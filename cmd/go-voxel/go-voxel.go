@@ -55,6 +55,7 @@ func main() {
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
 	cam.RenderDistance = renderDist
 	cam.Pos = te.Vec3(10, 10, 10)
+	cam.Pos = te.Vec3(100, 100, 100)
 
 	engine := engine.Engine{}
 	engine.Renderer = rm
