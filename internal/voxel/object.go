@@ -51,7 +51,7 @@ func ConvertVoxPath(path string, flipX, flipY, flipZ bool) (VoxelObj, error) {
 // ConvertVox converts a MagicaVoxel .vox file to a VoxelObj
 func ConvertVox(vox voxparse.Vox, flipX, flipY, flipZ bool) (VoxelObj, error) {
 	vObj := VoxelObj{}
-	if vox.NumModels < 1 {
+	if len(vox.Models) < 1 {
 		return VoxelObj{}, fmt.Errorf("Not enough models in .vox")
 	}
 
