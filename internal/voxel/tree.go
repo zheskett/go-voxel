@@ -324,7 +324,7 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 	// Continue descending down into the smallest node that surrounds the position
 	for tw.Node.IsStem() {
 		if !tw.Node.Box.surrounds(pos) {
-			panic("why is this happening to me")
+			panic("Why is this happening to me")
 		}
 		index := tw.Node.Box.Index(pos.X, pos.Y, pos.Z)
 		tw.Descend(index)
@@ -344,13 +344,25 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 			break
 		}
 
+		// pos := ray.Origin.Add(ray.Dir.Mul(data.Time))
 		pos := ray.Origin.Add(ray.Dir.Mul(data.Time + VoxelRayDelta))
 		x, y, z := int(math32.Floor(pos.X)), int(math32.Floor(pos.Y)), int(math32.Floor(pos.Z))
+		// x, y, z := int(pos.X), int(pos.Y), int(pos.Z)
+		// if pos.X < 0 {
+		// 	x -= 1;
+		// }
+		// if pos.Y < 0 {
+		// 	x -= 1;
+		// }
+		// if pos.Z < 0 {
+		// 	x -= 1;
+		// }
 		tw.GotoAbsolute(x, y, z)
 
 		if tw.Node.IsEmpty() {
 			_, nodeexit := tw.Node.Box.RayIntersection(ray)
-			data.Time = max(nodeexit, data.Time+VoxelRayDelta)
+			data.Time = nodeexit
+			// data.Time = max(nodeexit, data.Time+VoxelRayDelta)
 		} else if tw.Node.IsLeaf() {
 			return RayHit{
 				Hit:      true,

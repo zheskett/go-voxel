@@ -29,7 +29,7 @@ func main() {
 	engine.Camera = cam
 	engine.Voxels = voxel.VoxelWorld{Voxels: tree, Sun: voxel.DirLight{}, Lights: make([]voxel.PointLight, 0)}
 	engine.Renderer = &render.RenderManager{Pixels: render.PixelsInit(400, 300)}
-	scenes.VoxelDebugSceneBig(&engine.Voxels)
+	scenes.VoxelDebugSceneTrees(&engine.Voxels)
 
 	pprof.StartCPUProfile(file)
 	defer pprof.StopCPUProfile()
