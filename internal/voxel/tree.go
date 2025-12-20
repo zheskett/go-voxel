@@ -344,25 +344,13 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 			break
 		}
 
-		// pos := ray.Origin.Add(ray.Dir.Mul(data.Time))
 		pos := ray.Origin.Add(ray.Dir.Mul(data.Time + VoxelRayDelta))
 		x, y, z := int(math32.Floor(pos.X)), int(math32.Floor(pos.Y)), int(math32.Floor(pos.Z))
-		// x, y, z := int(pos.X), int(pos.Y), int(pos.Z)
-		// if pos.X < 0 {
-		// 	x -= 1;
-		// }
-		// if pos.Y < 0 {
-		// 	x -= 1;
-		// }
-		// if pos.Z < 0 {
-		// 	x -= 1;
-		// }
 		tw.GotoAbsolute(x, y, z)
 
 		if tw.Node.IsEmpty() {
 			_, nodeexit := tw.Node.Box.RayIntersection(ray)
-			data.Time = nodeexit
-			// data.Time = max(nodeexit, data.Time+VoxelRayDelta)
+			data.Time = max(nodeexit, data.Time+VoxelRayDelta)
 		} else if tw.Node.IsLeaf() {
 			return RayHit{
 				Hit:      true,

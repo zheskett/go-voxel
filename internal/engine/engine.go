@@ -29,6 +29,7 @@ func (eng *Engine) UpdateInputs() {
 func (eng *Engine) UpdateRender() {
 	eng.Renderer.Pixels.FillPixels(render.BackgroundRed, render.BackgroundGreen, render.BackgroundBlue)
 	eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Pixels, eng.Framedata.Tick)
+	eng.Renderer.Pixels.Dither();
 	eng.Renderer.Render(eng.Window)
 }
 

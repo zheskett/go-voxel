@@ -42,6 +42,35 @@ func (px *Pixels) Surrounds(x, y int) bool {
 	return x >= 0 && y >= 0 && x < px.Width && y < px.Height
 }
 
+// Floyd-Steinberg dithering copied verbatim from the Wikipedia implementation
+func (px *Pixels) Dither() {
+	for i := range px.Height - 1 {
+		for j := range px.Width - 1 {
+			oldColor := px.GetPixel(j, i)
+
+			var newColor [3]byte
+			for k := range 3 {
+				newColor[k] = oldColor[k] / 4 * 4
+			}
+
+			px.SetPixel(j, i, newColor[0], newColor[1], newColor[2])
+
+			qex := oldColor[0] - newColor[0]
+			qey := oldColor[1] - newColor[1]
+			qez := oldColor[2] - newColor[2]
+
+			p := px.GetPixel(j+1, i)
+			px.SetPixel(j+1, i, p[0]+qex*7/16, p[1]+qey*7+16, p[2]+qez*7+16)
+			p = px.GetPixel(j-1, i+1)
+			px.SetPixel(j-1, i+1, p[0]+qex*3/16, p[1]+qey*3+16, p[2]+qez*3+16)
+			p = px.GetPixel(j, i+1)
+			px.SetPixel(j, i+1, p[0]+qex*5/16, p[1]+qey*5+16, p[2]+qez*5+16)
+			p = px.GetPixel(j+1, i+1)
+			px.SetPixel(j+1, i+1, p[0]+qex*1/16, p[1]+qey*1+16, p[2]+qez*1+16)
+		}
+	}
+}
+
 type DepthBuffer struct {
 	data   []float32
 	Height int

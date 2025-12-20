@@ -1,6 +1,7 @@
 package render
 
 import (
+	"runtime"
 	"sync"
 
 	"github.com/chewxy/math32"
@@ -103,11 +104,12 @@ func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ra
 func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *Pixels, tick uint) {
 	basis := CameraRayBasisInit(cam, pix)
 
+	numThreads := runtime.NumCPU() - 1
 	threads := sync.WaitGroup{}
-	for thread := range RenderThreads {
+	for thread := range numThreads {
 		threads.Go(func() {
-			startrow := thread * pix.Height / RenderThreads
-			endrow := (thread + 1) * pix.Height / RenderThreads
+			startrow := thread * pix.Height / numThreads
+			endrow := (thread + 1) * pix.Height / numThreads
 
 			for row := startrow; row < endrow; row++ {
 				for col := 0; col < pix.Width; col++ {
