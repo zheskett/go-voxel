@@ -23,16 +23,16 @@ const (
 
 // Vox contains information about a .vox file.
 type Vox struct {
-	Version   int32        // The version of the .vox file
-	Models    []Model      // The model data
-	SceneTree VoxTransform // The SceneTree with transform/rotation info
-	Palette   VoxPalette   // The palette of the .vox file
+	Version int32      // The version of the .vox file
+	Models  []Model    // The model data
+	Palette VoxPalette // The palette of the .vox file
 }
 
-// Models contains the size of a model and the model data
+// Models contains the size of a model, the transform data, and the model data
 type Model struct {
-	SizeX, SizeY, SizeZ int32
-	Voxels              []XYZI
+	SizeX, SizeY, SizeZ    int32
+	TransX, TransY, TransZ int32
+	Voxels                 []XYZI
 }
 
 // XYZI contains the X, Y, Z, and color index values of a voxel
@@ -81,13 +81,12 @@ func Parse(path string) (Vox, error) {
 		return Vox{}, err
 	}
 
-	sceneTreePtr, err := fb.parseTransform()
+	sceneTree, err := fb.parseSceneTree()
 	if err != nil {
 		return Vox{}, err
 	}
-	vox.SceneTree = *sceneTreePtr
 
-	fmt.Printf("%q\n\n", fb.byteArr[fb.pos:])
+	// fmt.Printf("%q\n\n", fb.byteArr[fb.pos:])
 
 	rgbaSize, _, err := fb.findTag(colorTag)
 	// No color tag
@@ -104,8 +103,24 @@ func Parse(path string) (Vox, error) {
 	if err != nil {
 		return Vox{}, err
 	}
+	vox.setModelTransforms(sceneTree)
 
 	return vox, nil
+}
+
+func (vox *Vox) setModelTransforms(transform *VoxTransform) {
+	for _, t := range transform.Transforms {
+		vox.setModelTransforms(t)
+	}
+
+	if transform.Shape != nil {
+		for _, id := range transform.Shape.ModelIds {
+			// assume only 1 frame for now
+			vox.Models[id].TransX = transform.Frames[0].Translation[0]
+			vox.Models[id].TransY = transform.Frames[0].Translation[1]
+			vox.Models[id].TransZ = transform.Frames[0].Translation[2]
+		}
+	}
 }
 
 // readInt reads an integer, seeks to the next position in the file, then returns the integer
@@ -235,5 +250,9 @@ func (fb *fileBytes) readPalette() (VoxPalette, error) {
 
 func (vox *Vox) DebugInfo() {
 	fmt.Printf("Version: %v\n", vox.Version)
-	fmt.Printf("Transform:\n%v\n\n", vox.SceneTree)
+	fmt.Printf("Models: \n")
+	for _, model := range vox.Models {
+		fmt.Printf("\tSize: %vx%vx%v\n", model.SizeX, model.SizeY, model.SizeZ)
+		fmt.Printf("\tTrans: %vx%vx%v\n", model.TransX, model.TransY, model.TransZ)
+	}
 }

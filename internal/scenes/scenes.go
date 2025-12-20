@@ -313,13 +313,13 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 	monu.Squash()
 	vox.AddVoxelObj(monu, 0, vox.Y-int(monu.Y)-250, 200)
 
-	// kloster
-	kloster, err := vxl.ConvertVoxPath("assets/kloster.vox", false, true, false)
-	if err != nil {
-		panic(err)
-	}
-	kloster.Squash()
-	vox.AddVoxelObj(kloster, 300, vox.Y-int(kloster.Y)-250, 200)
+	// // kloster
+	// kloster, err := vxl.ConvertVoxPath("assets/kloster.vox", false, true, false)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// kloster.Squash()
+	// vox.AddVoxelObj(kloster, 300, vox.Y-int(kloster.Y)-250, 200)
 
 	// sponza
 	sponza, err := vxl.ConvertVoxPath("assets/sponza.vox", false, true, false)
