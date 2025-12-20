@@ -44,29 +44,47 @@ func (px *Pixels) Surrounds(x, y int) bool {
 
 // Floyd-Steinberg dithering copied verbatim from the Wikipedia implementation
 func (px *Pixels) Dither() {
+	// This probably shouldn't be specific to 'Pixels' but not sure where to put this
 	for i := range px.Height - 1 {
 		for j := range px.Width - 1 {
 			oldColor := px.GetPixel(j, i)
 
 			var newColor [3]byte
 			for k := range 3 {
-				newColor[k] = oldColor[k] / 4 * 4
+				newColor[k] = oldColor[k] / 8 * 8
 			}
 
 			px.SetPixel(j, i, newColor[0], newColor[1], newColor[2])
 
-			qex := oldColor[0] - newColor[0]
-			qey := oldColor[1] - newColor[1]
-			qez := oldColor[2] - newColor[2]
+			qex := int(oldColor[0] - newColor[0])
+			qey := int(oldColor[1] - newColor[1])
+			qez := int(oldColor[2] - newColor[2])
 
-			p := px.GetPixel(j+1, i)
-			px.SetPixel(j+1, i, p[0]+qex*7/16, p[1]+qey*7+16, p[2]+qez*7+16)
-			p = px.GetPixel(j-1, i+1)
-			px.SetPixel(j-1, i+1, p[0]+qex*3/16, p[1]+qey*3+16, p[2]+qez*3+16)
-			p = px.GetPixel(j, i+1)
-			px.SetPixel(j, i+1, p[0]+qex*5/16, p[1]+qey*5+16, p[2]+qez*5+16)
-			p = px.GetPixel(j+1, i+1)
-			px.SetPixel(j+1, i+1, p[0]+qex*1/16, p[1]+qey*1+16, p[2]+qez*1+16)
+			clamp := func(value int, rl, rh int) int {
+				if value < rl {
+					value = rl
+				}
+				if value >= rh {
+					value = rh
+				}
+				return value
+			}
+
+			ditherPixel := func(dx, dy int, factor int) {
+				pix := px.GetPixel(j+dx, i+dy)
+				px.SetPixel(
+					j+dx,
+					i+dy,
+					byte(clamp(int(pix[0])+qex*factor/16, 0, 255)),
+					byte(clamp(int(pix[1])+qey*factor/16, 0, 255)),
+					byte(clamp(int(pix[2])+qez*factor/16, 0, 255)),
+				)
+			}
+
+			ditherPixel(1, 0, 7)
+			ditherPixel(-1, 1, 3)
+			ditherPixel(0, 1, 5)
+			ditherPixel(1, 1, 1)
 		}
 	}
 }

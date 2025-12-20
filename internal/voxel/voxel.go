@@ -236,9 +236,9 @@ func (vox *VoxelWorld) AddVoxelObj(vObj VoxelObj, x, y, z int) {
 }
 
 // This is super temporary and just a proof of concept
-func (vox *Voxels) UpdateInputs(window *glfw.Window, pos te.Vector3, dir te.Vector3) {
+func (vox *VoxelWorld) UpdateInputs(window *glfw.Window, pos te.Vector3, dir te.Vector3) {
 	ray := Ray{Origin: pos, Dir: dir, Tmax: 100.0}
-	hit := vox.MarchRay(ray)
+	hit := vox.Voxels.MarchRay(ray)
 	if !hit.Hit {
 		return
 	}
@@ -249,7 +249,7 @@ func (vox *Voxels) UpdateInputs(window *glfw.Window, pos te.Vector3, dir te.Vect
 	if window.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
 		voxel := hit.Position.Add(hit.Normal.Mul(VoxelRayDelta))
 		x, y, z := int(voxel.X), int(voxel.Y), int(voxel.Z)
-		vox.SetVoxel(x, y, z, 255, 255, 255)
+		vox.SetVoxel(x, y, z, 255, 255, 255) // Only can add a pure white voxel right now
 	}
 }
 
@@ -281,4 +281,8 @@ type VoxelWorld struct {
 
 func (vox *VoxelWorld) SetVoxel(x, y, z int, r, g, b byte) {
 	vox.Voxels.Insert(x, y, z, r, g, b)
+}
+
+func (vox *VoxelWorld) ResetVoxel(x, y, z int) {
+	vox.Voxels.Remove(x, y, z)
 }

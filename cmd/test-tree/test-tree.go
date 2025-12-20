@@ -36,6 +36,7 @@ func main() {
 
 	for range 1000 {
 		engine.Camera.RenderVoxels(&engine.Voxels, &engine.Renderer.Pixels, engine.Framedata.Tick)
+		engine.Renderer.Pixels.Dither()
 		engine.Camera.UpdateRotation(1, 1)
 	}
 }

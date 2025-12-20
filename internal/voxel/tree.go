@@ -241,6 +241,21 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 	return node.Leaves[index].RecursiveInsert(x, y, z, r, g, b)
 }
 
+func (node *TreeNode) RecursiveRemove(x, y, z int) {
+	pos := te.Vec3i(x, y, z)
+	if !node.Box.surrounds(pos) {
+		return
+	}
+
+	if node.IsLeaf() {
+		node.Voxel = Voxel{}
+		return
+	}
+
+	index := node.Box.Index(pos.X, pos.Y, pos.Z)
+	node.Leaves[index].RecursiveRemove(x, y, z)
+}
+
 func (node *TreeNode) subdivide() {
 	parts := node.Box.subdivide()
 	for i := range 8 {
@@ -261,6 +276,10 @@ func OctreeInit(size int) Octree {
 
 func (oc *Octree) Insert(x, y, z int, r, g, b byte) bool {
 	return oc.Root.RecursiveInsert(x, y, z, r, g, b)
+}
+
+func (oc *Octree) Remove(x, y, z int) {
+	oc.Root.RecursiveRemove(x, y, z)
 }
 
 func (oc *Octree) GetVoxel(x, y, z int) *Voxel {

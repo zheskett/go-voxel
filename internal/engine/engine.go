@@ -24,6 +24,7 @@ func (eng *Engine) UpdateInputs() {
 	eng.Framedata.Update()
 	eng.Framedata.ReportFps()
 	eng.Camera.UpdateCamInput(&eng.Framedata)
+	eng.Voxels.UpdateInputs(eng.Window, eng.Camera.Pos, eng.Camera.Fvec)
 }
 
 func (eng *Engine) UpdateRender() {
