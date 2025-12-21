@@ -242,84 +242,58 @@ func VoxelDebugSceneHugeBunny(vox *vxl.VoxelWorld) {
 }
 
 func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
-	brightness := 30000
-	light := vxl.PointLight{
-		Position: te.Vec3(4, 2, 6),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 2)),
+	brightness := 20000
+	// Add lights every 256 voxels
+	for i := range vox.X / 256 {
+		for j := range vox.Y / 256 {
+			for k := range vox.Z / 256 {
+				vox.Lights = append(vox.Lights, vxl.PointLight{
+					Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
+					Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+				})
+			}
+		}
 	}
-	light2 := vxl.PointLight{
-		Position: te.Vec3(500, 32, 96),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
-	}
-	light3 := vxl.PointLight{
-		Position: te.Vec3(500, 32, 500),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
-	}
-	light4 := vxl.PointLight{
-		Position: te.Vec3(500, 32, 256),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
-	}
-	light5 := vxl.PointLight{
-		Position: te.Vec3(256, 400, 256),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
-	}
-	light6 := vxl.PointLight{
-		Position: te.Vec3(180, 200, 200),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 4)),
-	}
-	light7 := vxl.PointLight{
-		Position: te.Vec3(1, 140, 250),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
-	}
-	light8 := vxl.PointLight{
-		Position: te.Vec3(1, 140, 0),
-		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness / 3)),
-	}
-	light9 := vxl.PointLight{
-		Position: te.Vec3(float32(vox.X)/2, float32(vox.Y)/2, float32(vox.Z)/2),
-		Color:    te.Vec3(1.0, 7.0, 7.0).Mul(float32(brightness / 2)),
-	}
-	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7, light8, light9)
 
 	// Fall Tree
-	fallTree, err := vxl.ConvertVoxPath("assets/FallTree.vox", false, true, false)
-	if err != nil {
-		panic(err)
-	}
-	fallTree.Squash()
-	vox.AddVoxelObj(fallTree, 0, 0, 0)
-
+	// fallTree, err := vxl.ConvertVoxPath("assets/FallTree.vox", false, true, false)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fallTree.Squash()
+	// vox.AddVoxelObj(fallTree, 0, 0, 0)
+	//
 	// PineFluffy
-	pine, err := vxl.ConvertVoxPath("assets/PineFluffy.vox", false, true, false)
-	if err != nil {
-		panic(err)
-	}
-	pine.Squash()
-	vox.AddVoxelObj(pine, 200, 110, 200)
+	// pine, err := vxl.ConvertVoxPath("assets/PineFluffy.vox", false, true, false)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// pine.Squash()
+	// vox.AddVoxelObj(pine, 200, 110, 200)
 
-	// Menger
-	menger, err := vxl.ConvertVoxPath("assets/menger.vox", false, true, false)
-	if err != nil {
-		panic(err)
-	}
-	menger.Squash()
-	vox.AddVoxelObj(menger, 200, vox.Y-100, 300)
+	// // Menger
+	// menger, err := vxl.ConvertVoxPath("assets/menger.vox", false, true, false)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// menger.Squash()
+	// vox.AddVoxelObj(menger, 200, vox.Y-100, 300)
 
-	// Monument
-	monu, err := vxl.ConvertVoxPath("assets/monu10.vox", false, true, false)
-	if err != nil {
-		panic(err)
-	}
-	monu.Squash()
-	vox.AddVoxelObj(monu, 190, vox.Y-int(monu.Y)-150, 200)
+	// // Monument
+	// monu, err := vxl.ConvertVoxPath("assets/monu10.vox", false, true, false)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// monu.Squash()
+	// vox.AddVoxelObj(monu, 190, vox.Y-int(monu.Y)-150, 200)
 
-	// kloster
-	kloster, err := vxl.ConvertVoxPath("assets/kloster.vox", false, true, false)
-	if err != nil {
-		panic(err)
-	}
-	kloster.Squash()
-	vox.AddVoxelObj(kloster, 300, vox.Y-int(kloster.Y), 200)
+	// // kloster
+	// kloster, err := vxl.ConvertVoxPath("assets/kloster.vox", false, true, false)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// kloster.Squash()
+	// vox.AddVoxelObj(kloster, 300, vox.Y-int(kloster.Y), 200)
 
 	// sponza
 	sponza, err := vxl.ConvertVoxPath("assets/sponza.vox", false, true, false)
@@ -339,4 +313,26 @@ func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
 			}
 		}
 	}
+	vox.AddVoxelObj(sponza, 0, 0, 0)
+}
+
+func VoxelDebugSceneNuke(vox *vxl.VoxelWorld) {
+	brightness := 20000
+	// Add lights every 256 voxels
+	for i := range vox.X / 256 {
+		for j := range vox.Y / 256 {
+			for k := range vox.Z / 256 {
+				vox.Lights = append(vox.Lights, vxl.PointLight{
+					Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
+					Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+				})
+			}
+		}
+	}
+	nuke, err := vxl.ConvertVoxPath("assets/nuke.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	nuke.Squash()
+	vox.AddVoxelObj(nuke, 0, 0, 0)
 }

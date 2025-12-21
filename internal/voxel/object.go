@@ -51,23 +51,31 @@ func ConvertVoxPath(path string, flipX, flipY, flipZ bool) (VoxelObj, error) {
 // ConvertVox converts a MagicaVoxel .vox file to a VoxelObj
 func ConvertVox(vox voxparse.Vox, flipX, flipY, flipZ bool) (VoxelObj, error) {
 	vObj := VoxelObj{}
-	if vox.NumModels < 1 {
+	if len(vox.Models) < 1 {
 		return VoxelObj{}, fmt.Errorf("Not enough models in .vox")
 	}
 
 	// .vox uses Z as gravity dir
 	totalVoxels := 0
+	var minX, minY, minZ int16
 	for _, m := range vox.Models {
-		vObj.X = max(int16(m.SizeX), vObj.X)
-		vObj.Y = max(int16(m.SizeX), vObj.Y)
-		vObj.Z = max(int16(m.SizeX), vObj.Z)
+		mx, my, mz := m.ModelOrigin()
+		minX = min(int16(mx), minX)
+		minY = min(int16(mz), minY)
+		minZ = min(int16(my), minZ)
+	}
+	for _, m := range vox.Models {
+		vObj.X = max(int16(m.SizeX+m.TransX)-minX, vObj.X)
+		vObj.Y = max(int16(m.SizeZ+m.TransZ)-minY, vObj.Y)
+		vObj.Z = max(int16(m.SizeY+m.TransY)-minZ, vObj.Z)
 		totalVoxels += len(m.Voxels)
 	}
 	vObj.Voxels = make(map[[3]int16]byte, totalVoxels)
 	for _, m := range vox.Models {
 		for _, v := range m.Voxels {
 			// Again, .vox uses Z as gravity dir
-			x, y, z := int16(v.X), int16(v.Z), int16(v.Y)
+			originX, originY, originZ := m.ModelOrigin()
+			x, y, z := int16(v.X)+int16(originX)-minX, int16(v.Z)+int16(originZ)-minY, int16(v.Y)+int16(originY)-minZ
 			if flipX {
 				x = vObj.X - x - 1
 			}

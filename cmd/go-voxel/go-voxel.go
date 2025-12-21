@@ -25,7 +25,7 @@ func main() {
 	world.Y = size
 	world.Z = size
 	var scene int
-	fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, 4 for .vox objects, anything else for small scene\n")
+	fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, 4 for sponza, 5 for nuke, anything else for small scene\n")
 	fmt.Scanln(&scene)
 	switch scene {
 	case 1:
@@ -40,7 +40,17 @@ func main() {
 	case 4:
 		renderDist = 1024.0
 		world.Voxels = voxel.OctreeInit(2048)
+		world.X = int(renderDist)
+		world.Y = int(renderDist)
+		world.Z = int(renderDist)
 		scenes.VoxelDebugSceneTrees(&world)
+	case 5:
+		renderDist = 1024.0
+		world.Voxels = voxel.OctreeInit(5012)
+		world.X = int(renderDist)
+		world.Y = int(renderDist)
+		world.Z = int(renderDist)
+		scenes.VoxelDebugSceneNuke(&world)
 	default:
 		scenes.VoxelDebugSceneSmall(&world)
 	}
