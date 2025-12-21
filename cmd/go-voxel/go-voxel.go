@@ -36,7 +36,7 @@ func main() {
 		renderDist = 560.0
 	case 5:
 		scenes.VoxelDebugSceneNuke(&vox)
-		renderDist = 512.0
+		renderDist = 1024.0
 	default:
 		scenes.VoxelDebugSceneSmall(&vox)
 	}

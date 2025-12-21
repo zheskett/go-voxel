@@ -14,7 +14,7 @@
 *.pprof
 
 # too big
-asseets/nuke.vox
+nuke.vox
 
 # Test binary, built with `go test -c`
 *.test

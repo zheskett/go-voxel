@@ -311,7 +311,7 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 
 func VoxelDebugSceneNuke(vox *vxl.Voxels) {
 	brightness := 20000
-	*vox = vxl.VoxelsInit(2048, 512, 2048)
+	*vox = vxl.VoxelsInit(5012, 1024, 5012)
 	// Add lights every 256 voxels
 	for i := range vox.X / 256 {
 		for j := range vox.Y / 256 {
