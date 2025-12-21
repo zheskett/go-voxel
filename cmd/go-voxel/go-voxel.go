@@ -21,7 +21,7 @@ func main() {
 	vox := vxl.VoxelsInit(256, 256, 256)
 	renderDist := float32(256.0)
 	var scene int
-	fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, 4 for .vox objects, anything else for small scene\n")
+	fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, 4 for sponza, 5 for nuke, anything else for small scene\n")
 	fmt.Scanln(&scene)
 	switch scene {
 	case 1:
@@ -34,6 +34,9 @@ func main() {
 	case 4:
 		scenes.VoxelDebugSceneTrees(&vox)
 		renderDist = 560.0
+	case 5:
+		scenes.VoxelDebugSceneNuke(&vox)
+		renderDist = 512.0
 	default:
 		scenes.VoxelDebugSceneSmall(&vox)
 	}

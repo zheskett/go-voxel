@@ -308,3 +308,25 @@ func VoxelDebugSceneTrees(vox *vxl.Voxels) {
 	sponza.Squash()
 	vox.AddVoxelObj(sponza, 0, 0, 0)
 }
+
+func VoxelDebugSceneNuke(vox *vxl.Voxels) {
+	brightness := 20000
+	*vox = vxl.VoxelsInit(2048, 512, 2048)
+	// Add lights every 256 voxels
+	for i := range vox.X / 256 {
+		for j := range vox.Y / 256 {
+			for k := range vox.Z / 256 {
+				vox.Lights = append(vox.Lights, vxl.Light{
+					Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
+					Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+				})
+			}
+		}
+	}
+	nuke, err := vxl.ConvertVoxPath("assets/nuke.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	nuke.Squash()
+	vox.AddVoxelObj(nuke, 0, 0, 0)
+}

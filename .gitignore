@@ -13,6 +13,9 @@
 /test-parser
 *.pprof
 
+# too big
+asseets/nuke.vox
+
 # Test binary, built with `go test -c`
 *.test
 
