@@ -1,5 +1,7 @@
 package render
 
+import "github.com/chewxy/math32"
+
 // Pixels contains the data for each pixel on the screen.
 // Every pixel is 4 bytes, RGBA
 type Pixels struct {
@@ -45,13 +47,15 @@ func (px *Pixels) Surrounds(x, y int) bool {
 // Floyd-Steinberg dithering copied verbatim from the Wikipedia implementation
 func (px *Pixels) Dither() {
 	// This probably shouldn't be specific to 'Pixels' but not sure where to put this
+	//
+	// Actually, see the note on the function below
 	for i := range px.Height - 1 {
 		for j := range px.Width - 1 {
 			oldColor := px.GetPixel(j, i)
 
 			var newColor [3]byte
 			for k := range 3 {
-				newColor[k] = oldColor[k] / 12 * 12
+				newColor[k] = oldColor[k] / 16 * 16
 			}
 
 			px.SetPixel(j, i, newColor[0], newColor[1], newColor[2])
@@ -85,6 +89,23 @@ func (px *Pixels) Dither() {
 			ditherPixel(-1, 1, 3)
 			ditherPixel(0, 1, 5)
 			ditherPixel(1, 1, 1)
+		}
+	}
+}
+
+// This function and the one above seem slow, but the runtime is so overwhelmingly
+// dominated by the CPU raymarching that these almost don't matter. These should
+// eventually be moved into a real shader that is applied to the framebuffer, but
+// for now this works as a proof of concept
+func (px *Pixels) CorrectGamma() {
+	for i := range px.Height - 1 {
+		for j := range px.Width - 1 {
+			color := px.GetPixel(j, i)
+			cx, cy, cz := color[0], color[1], color[2]
+			gcx := math32.Sqrt((float32(cx) / 256.0)) * 255.9999
+			gcy := math32.Sqrt((float32(cy) / 256.0)) * 255.9999
+			gcz := math32.Sqrt((float32(cz) / 256.0)) * 255.9999
+			px.SetPixel(j, i, byte(gcx), byte(gcy), byte(gcz))
 		}
 	}
 }

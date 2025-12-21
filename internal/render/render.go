@@ -31,6 +31,11 @@ const (
 	RenderThreads = 16
 )
 
+// Set the minimum luminance even for complete shadow
+const (
+	MinLuminosity = 0.05
+)
+
 // FrameData allows camera movements to be made independent of FPS for a smoother movements
 type FrameData struct {
 	Previous time.Time

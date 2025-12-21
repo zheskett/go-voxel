@@ -129,7 +129,7 @@ func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *Pixels, tick uint) {
 						}
 
 						// // Make sure that the minimum brightness even in complete shadow is 10%
-						shadedcolor := shadedintensity.ComponentMax(0.1).MulComponent(color).ComponentMin(254.9999)
+						shadedcolor := shadedintensity.ComponentMax(MinLuminosity).MulComponent(color).ComponentMin(254.9999)
 
 						pix.SetPixel(col, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
 					}

@@ -242,14 +242,14 @@ func VoxelDebugSceneHugeBunny(vox *vxl.VoxelWorld) {
 }
 
 func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
-	brightness := 20000
+	brightness := 10000
 	// Add lights every 256 voxels
 	for i := range vox.X / 256 {
 		for j := range vox.Y / 256 {
 			for k := range vox.Z / 256 {
 				vox.Lights = append(vox.Lights, vxl.PointLight{
 					Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
-					Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+					Color:    te.Vec3(1.0, 0.95, 0.95).Mul(float32(brightness)),
 				})
 			}
 		}
