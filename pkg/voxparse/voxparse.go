@@ -21,28 +21,28 @@ const (
 	paletteSize    = 256
 )
 
-type fileBytes struct {
-	byteArr []byte
-	pos     int
-}
-
 // Vox contains information about a .vox file.
 type Vox struct {
-	Version   int        // The version of the .vox file
-	NumModels int        // The number of models
-	Models    []Model    // The model data
-	Palette   VoxPalette // The palette of the .vox file
+	Version int32      // The version of the .vox file
+	Models  []Model    // The model data
+	Palette VoxPalette // The palette of the .vox file
 }
 
-// Models contains the size of a model and the model data
+// Models contains the size of a model, the transform data, and the model data
 type Model struct {
-	SizeX, SizeY, SizeZ int
-	Voxels              []XYZI
+	SizeX, SizeY, SizeZ    int32
+	TransX, TransY, TransZ int32
+	Voxels                 []XYZI
 }
 
 // XYZI contains the X, Y, Z, and color index values of a voxel
 type XYZI struct {
 	X, Y, Z, I byte // X, Y, Z, ColorIndex
+}
+
+type fileBytes struct {
+	byteArr []byte
+	pos     int
 }
 
 // Parse parses a .vox file and returns a Vox object.
@@ -59,7 +59,7 @@ func Parse(path string) (Vox, error) {
 		return Vox{}, err
 	}
 
-	vox.NumModels, err = fb.checkPack()
+	numModels, err := fb.checkPack()
 	if err != nil {
 		return Vox{}, err
 	}
@@ -71,13 +71,22 @@ func Parse(path string) (Vox, error) {
 		}
 		vox.Models = append(vox.Models, model)
 		next := bytes.Index(fb.byteArr[fb.pos:], []byte(sizeTag))
-		if next == -1 || (len(vox.Models) >= vox.NumModels && vox.NumModels != 0) {
+		if next == -1 || (len(vox.Models) >= int(numModels) && numModels != 0) {
 			break
 		}
 		fb.pos += next
 	}
 
-	vox.NumModels = len(vox.Models)
+	if err != nil {
+		return Vox{}, err
+	}
+
+	sceneTree, err := fb.parseSceneTree()
+	if err != nil {
+		return Vox{}, err
+	}
+
+	// fmt.Printf("%q\n\n", fb.byteArr[fb.pos:])
 
 	rgbaSize, _, err := fb.findTag(colorTag)
 	// No color tag
@@ -94,14 +103,30 @@ func Parse(path string) (Vox, error) {
 	if err != nil {
 		return Vox{}, err
 	}
+	vox.setModelTransforms(sceneTree)
 
 	return vox, nil
 }
 
+func (vox *Vox) setModelTransforms(transform *VoxTransform) {
+	for _, t := range transform.Transforms {
+		vox.setModelTransforms(t)
+	}
+
+	if transform.Shape != nil {
+		for _, id := range transform.Shape.ModelIds {
+			// assume only 1 frame for now
+			vox.Models[id].TransX = transform.Frames[0].Translation[0]
+			vox.Models[id].TransY = transform.Frames[0].Translation[1]
+			vox.Models[id].TransZ = transform.Frames[0].Translation[2]
+		}
+	}
+}
+
 // readInt reads an integer, seeks to the next position in the file, then returns the integer
 // Does not do bounds checking!
-func (fb *fileBytes) readInt() int {
-	val := int(binary.LittleEndian.Uint32(fb.byteArr[fb.pos:]))
+func (fb *fileBytes) readInt() int32 {
+	val := int32(binary.LittleEndian.Uint32(fb.byteArr[fb.pos:]))
 	fb.pos += 4
 	return val
 }
@@ -109,7 +134,7 @@ func (fb *fileBytes) readInt() int {
 // findTag seeks to the right after the next occurrence of a tag and its metadata.
 // Returns the chunk data size and children chunks
 // Returns an error if the tag is not found
-func (fb *fileBytes) findTag(tag string) (int, int, error) {
+func (fb *fileBytes) findTag(tag string) (int32, int32, error) {
 	location := bytes.Index(fb.byteArr[fb.pos:], []byte(tag))
 	if location == -1 {
 		return 0, 0, fmt.Errorf("Tag %v not found in file", tag)
@@ -127,7 +152,7 @@ func (fb *fileBytes) findTag(tag string) (int, int, error) {
 // parseHeader parses the header of a .vox file.
 // Also parses the MAIN tag to check validity
 // Returns the version and returns error if one has occurred
-func (fb *fileBytes) parseHeader() (int, error) {
+func (fb *fileBytes) parseHeader() (int32, error) {
 	if string(fb.byteArr[:len(voxMagicString)]) != voxMagicString {
 		return 0, fmt.Errorf("Invalid vox file, magic string not found")
 	}
@@ -138,7 +163,7 @@ func (fb *fileBytes) parseHeader() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if mainSize != 0 || mainChildrenSize != len(fb.byteArr)-fb.pos {
+	if mainSize != 0 || mainChildrenSize != int32(len(fb.byteArr)-fb.pos) {
 		return 0, fmt.Errorf("Malformed main tag")
 	}
 
@@ -147,7 +172,7 @@ func (fb *fileBytes) parseHeader() (int, error) {
 
 // checkPack returns the number of models via the PACK header.
 // 0 means no pack tag, so should just search for SIZE tags until none
-func (fb *fileBytes) checkPack() (int, error) {
+func (fb *fileBytes) checkPack() (int32, error) {
 	if len(fb.byteArr[fb.pos:]) < 16 || string(fb.byteArr[fb.pos:fb.pos+4]) != packTag {
 		return 0, nil
 	}
@@ -221,4 +246,19 @@ func (fb *fileBytes) readPalette() (VoxPalette, error) {
 	fb.pos += 4
 
 	return palette, nil
+}
+
+func (vox *Vox) DebugInfo() {
+	fmt.Printf("Version: %v\n", vox.Version)
+	fmt.Printf("Models: \n")
+	for _, model := range vox.Models {
+		fmt.Printf("\tSize: %vx%vx%v\n", model.SizeX, model.SizeY, model.SizeZ)
+		fmt.Printf("\tTrans: %vx%vx%v\n", model.TransX, model.TransY, model.TransZ)
+	}
+}
+
+func (m *Model) ModelOrigin() (int32, int32, int32) {
+	// Apparently _t is applied from the center, not the corner
+	// That's why -m.Size/2 is needed
+	return m.TransX - m.SizeX/2, m.TransY - m.SizeY/2, m.TransZ - m.SizeZ/2
 }
