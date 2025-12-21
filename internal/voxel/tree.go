@@ -241,6 +241,7 @@ func (node *TreeNode) RecursiveInsert(x, y, z int, r, g, b byte) bool {
 	return node.Leaves[index].RecursiveInsert(x, y, z, r, g, b)
 }
 
+// This function is actually broken but that is ok for now
 func (node *TreeNode) RecursiveRemove(x, y, z int) {
 	pos := te.Vec3i(x, y, z)
 	if !node.Box.surrounds(pos) {
@@ -248,7 +249,7 @@ func (node *TreeNode) RecursiveRemove(x, y, z int) {
 	}
 
 	if node.IsLeaf() {
-		node.Voxel = Voxel{}
+		node.Voxel = VoxelInit()
 		return
 	}
 

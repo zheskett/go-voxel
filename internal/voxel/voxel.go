@@ -249,7 +249,15 @@ func (vox *VoxelWorld) UpdateInputs(window *glfw.Window, pos te.Vector3, dir te.
 	if window.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
 		voxel := hit.Position.Add(hit.Normal.Mul(VoxelRayDelta))
 		x, y, z := int(voxel.X), int(voxel.Y), int(voxel.Z)
-		vox.SetVoxel(x, y, z, 255, 255, 255) // Only can add a pure white voxel right now
+		vox.SetVoxel(x, y, z, 255, 255, 255)
+		for i := -1; i <= 1; i++ {
+			for j := -1; j <= 1; j++ {
+				for k := -1; k <= 1; k++ {
+					// Only can add a pure white voxel right now
+					vox.SetVoxel(x+i, y+j, z+k, 255, 255, 255)
+				}
+			}
+		}
 	}
 }
 
@@ -277,6 +285,10 @@ type VoxelWorld struct {
 	Voxels  Octree
 	Sun     DirLight
 	Lights  []PointLight
+}
+
+func VoxelWorldInit(size int) VoxelWorld {
+	return VoxelWorld{Voxels: OctreeInit(size), Lights: make([]PointLight, 0)}
 }
 
 func (vox *VoxelWorld) SetVoxel(x, y, z int, r, g, b byte) {

@@ -230,7 +230,6 @@ func VoxelDebugSceneHugeBunny(vox *vxl.VoxelWorld) {
 		Position: te.Vec3(96, 32, 500),
 		Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
 	}
-	// *vox = vxl.VoxelWorldInit(512, 512, 512)
 	vox.Lights = append(vox.Lights, light, light2, light3, light4, light5, light6, light7)
 
 	// Bunny
@@ -330,4 +329,14 @@ func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
 
 	sponza.Squash()
 	vox.AddVoxelObj(sponza, 100, vox.Y-int(sponza.Y), 512)
+
+	for i := 0; i < vox.X; i++ {
+		for j := 0; j < vox.Z; j++ {
+			if (i/100+j/100)%2 == 0 {
+				vox.SetVoxel(i, j, 0, 0, 255, 255)
+			} else {
+				vox.SetVoxel(i, j, 0, 255, 255, 0)
+			}
+		}
+	}
 }

@@ -30,7 +30,7 @@ func (eng *Engine) UpdateInputs() {
 func (eng *Engine) UpdateRender() {
 	eng.Renderer.Pixels.FillPixels(render.BackgroundRed, render.BackgroundGreen, render.BackgroundBlue)
 	eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Pixels, eng.Framedata.Tick)
-	eng.Renderer.Pixels.Dither();
+	eng.Renderer.Pixels.Dither()
 	eng.Renderer.Render(eng.Window)
 }
 
@@ -69,8 +69,14 @@ func (eng *Engine) SetKeyCallback() {
 		case glfw.Release:
 			eng.Framedata.Keys[key] = false
 		}
+		// Allows 'T' to be used to lock/unlock the mouse
 		if key == glfw.KeyT {
-			win.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+			switch win.GetInputMode(glfw.CursorMode) {
+			case glfw.CursorNormal:
+				win.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+			default:
+				win.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+			}
 		}
 	})
 }

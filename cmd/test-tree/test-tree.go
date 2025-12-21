@@ -24,7 +24,7 @@ func main() {
 	cam.Fov = 90
 	cam.Aspect = float32(400) / float32(300)
 	cam.RenderDistance = 4096
-	cam.Pos = tensor.Vec3(100, 100, 100)
+	cam.Pos = tensor.Vec3Splat(256)
 	engine := engine.Engine{}
 	engine.Camera = cam
 	engine.Voxels = voxel.VoxelWorld{Voxels: tree, Sun: voxel.DirLight{}, Lights: make([]voxel.PointLight, 0)}

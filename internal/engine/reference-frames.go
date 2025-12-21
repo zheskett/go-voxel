@@ -30,6 +30,10 @@ type ReferenceFramei struct {
 	o tensor.Vector3i
 }
 
+func RefFrameiInit(b11, b22, b33 tensor.Vector3i, o tensor.Vector3i) ReferenceFramei {
+	return ReferenceFramei{b11, b22, b33, o}
+}
+
 func (f ReferenceFramef) toGlobal(v tensor.Vector3) tensor.Vector3 {
 	return f.o.Add(f.b11.Mul(v.X)).Add(f.b22.Mul(v.Y)).Add(f.b33.Mul(v.Z))
 }

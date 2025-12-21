@@ -142,6 +142,7 @@ func (rm *RenderManager) Render(window *glfw.Window) {
 
 	fbWidth, fbHeight := window.GetFramebufferSize()
 	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, int32(fbWidth), int32(fbHeight), gl.COLOR_BUFFER_BIT, gl.NEAREST)
+	window.SetAspectRatio(fbWidth, fbHeight)
 	window.SwapBuffers()
 	glfw.PollEvents()
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/zheskett/go-voxel/internal/scenes"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 	"github.com/zheskett/go-voxel/internal/voxel"
-	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
 func init() {
@@ -21,8 +20,7 @@ func init() {
 func main() {
 	renderDist := float32(256.0)
 	size := 256
-	tree := voxel.OctreeInit(size)
-	world := voxel.VoxelWorld{Voxels: tree, Sun: vxl.DirLight{}, Lights: make([]vxl.PointLight, 0)}
+	world := voxel.VoxelWorldInit(size)
 	world.X = size
 	world.Y = size
 	world.Z = size
@@ -54,7 +52,7 @@ func main() {
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
 	cam.RenderDistance = renderDist
-	cam.Pos = te.Vec3(100, 100, 100)
+	cam.Pos = te.Vec3Splat(16)
 
 	engine := engine.Engine{}
 	engine.Renderer = rm

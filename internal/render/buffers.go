@@ -51,7 +51,7 @@ func (px *Pixels) Dither() {
 
 			var newColor [3]byte
 			for k := range 3 {
-				newColor[k] = oldColor[k] / 8 * 8
+				newColor[k] = oldColor[k] / 12 * 12
 			}
 
 			px.SetPixel(j, i, newColor[0], newColor[1], newColor[2])

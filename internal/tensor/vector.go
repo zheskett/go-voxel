@@ -365,6 +365,11 @@ func (v1 Vector3i) AsVec3f() Vector3 {
 	return Vec3(float32(v1.X), float32(v1.Y), float32(v1.Z))
 }
 
+// Returns the negative of the vector
+func (v1 Vector3i) Neg() Vector3i {
+	return Vec3i(-v1.X, -v1.Y, -v1.Z)
+}
+
 // Returns the sum of two vectors
 func (v1 Vector3i) Add(v2 Vector3i) Vector3i {
 	return Vec3i(v1.X+v2.X, v1.Y+v2.Y, v1.Z+v2.Z)
