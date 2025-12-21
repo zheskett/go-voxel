@@ -33,7 +33,7 @@ const (
 
 // Set the minimum luminance even for complete shadow
 const (
-	MinLuminosity = 0.05
+	MinLuminosity = 0.01
 )
 
 // FrameData allows camera movements to be made independent of FPS for a smoother movements
@@ -73,7 +73,8 @@ type RenderManager struct {
 	fbo           uint32
 
 	// Buffers that are used for the software renderer to write into
-	Pixels Pixels      // Color buffer (displayed to screen)
+	Pixels Pixels      // RGBA byte buffer (displayed to screen)
+	Color  ColorBuffer // Vec3 color buffer (for internal rendering)
 	Depth  DepthBuffer // Depth buffer
 }
 
@@ -129,8 +130,19 @@ func RenderManagerInit() (*RenderManager, *glfw.Window) {
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rm.renderTexture, 0)
 
 	rm.Pixels = PixelsInit(TextureWidth, TextureHeight)
+	rm.Color = ColorBufferInit(TextureWidth, TextureHeight)
 
 	return &rm, window
+}
+
+func (rm *RenderManager) LoadPixels() {
+	for row := range rm.Pixels.Height {
+		for col := range rm.Pixels.Width {
+			color := rm.Color.GetColor(col, row)
+			color = color.ComponentMin(255.99999)
+			rm.Pixels.SetPixel(col, row, byte(color.X), byte(color.Y), byte(color.Z))
+		}
+	}
 }
 
 // Render renders the current state

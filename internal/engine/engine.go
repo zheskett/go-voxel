@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/zheskett/go-voxel/internal/render"
+	"github.com/zheskett/go-voxel/internal/tensor"
 	"github.com/zheskett/go-voxel/internal/voxel"
 )
 
@@ -28,19 +29,19 @@ func (eng *Engine) UpdateInputs() {
 }
 
 func (eng *Engine) UpdateRender() {
-	eng.Renderer.Pixels.FillPixels(render.BackgroundRed, render.BackgroundGreen, render.BackgroundBlue)
-	eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Pixels, eng.Framedata.Tick)
-	eng.Renderer.Pixels.CorrectGamma()
-	eng.Renderer.Pixels.Dither()
-	eng.Renderer.Render(eng.Window)
-}
-
-// Check for exit condition
-func (eng *Engine) CheckExit() {
-	if eng.Window.GetKey(glfw.KeyEscape) == glfw.Press || eng.Window.ShouldClose() {
-		glfw.Terminate()
-		os.Exit(0)
-	}
+	// Clear background
+	eng.Renderer.Color.FillColor(
+		tensor.Vec3(
+			render.BackgroundRed,
+			render.BackgroundGreen,
+			render.BackgroundBlue,
+		),
+	)
+	eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Color, eng.Framedata.Tick) // Render into Color-buffer
+	eng.Renderer.Color.CorrectGamma()                                             // Apply gamma correction
+	eng.Renderer.LoadPixels()                                                     // Convert to RGBA byte
+	eng.Renderer.Pixels.Dither()                                                  // Dither applied to byte-buffer
+	eng.Renderer.Render(eng.Window)                                               // Blit to screen frame-buffer
 }
 
 func (eng *Engine) SetCallbacks() {
@@ -80,4 +81,12 @@ func (eng *Engine) SetKeyCallback() {
 			}
 		}
 	})
+}
+
+// Check for exit condition
+func (eng *Engine) CheckExit() {
+	if eng.Window.GetKey(glfw.KeyEscape) == glfw.Press || eng.Window.ShouldClose() {
+		glfw.Terminate()
+		os.Exit(0)
+	}
 }

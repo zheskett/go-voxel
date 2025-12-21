@@ -1,6 +1,15 @@
 package render
 
-import "github.com/chewxy/math32"
+import (
+	"runtime"
+	"sync"
+
+	"github.com/chewxy/math32"
+	"github.com/zheskett/go-voxel/internal/tensor"
+)
+
+// It would be super cool if generics worked normally, considering like 3 of these
+// types are basically identical
 
 // Pixels contains the data for each pixel on the screen.
 // Every pixel is 4 bytes, RGBA
@@ -48,7 +57,7 @@ func (px *Pixels) Surrounds(x, y int) bool {
 func (px *Pixels) Dither() {
 	// This probably shouldn't be specific to 'Pixels' but not sure where to put this
 	//
-	// Actually, see the note on the function below
+	// Actually, see the note on the function ColorBuffer.CorrectGamma
 	for i := range px.Height - 1 {
 		for j := range px.Width - 1 {
 			oldColor := px.GetPixel(j, i)
@@ -93,23 +102,6 @@ func (px *Pixels) Dither() {
 	}
 }
 
-// This function and the one above seem slow, but the runtime is so overwhelmingly
-// dominated by the CPU raymarching that these almost don't matter. These should
-// eventually be moved into a real shader that is applied to the framebuffer, but
-// for now this works as a proof of concept
-func (px *Pixels) CorrectGamma() {
-	for i := range px.Height - 1 {
-		for j := range px.Width - 1 {
-			color := px.GetPixel(j, i)
-			cx, cy, cz := color[0], color[1], color[2]
-			gcx := math32.Sqrt((float32(cx) / 256.0)) * 255.9999
-			gcy := math32.Sqrt((float32(cy) / 256.0)) * 255.9999
-			gcz := math32.Sqrt((float32(cz) / 256.0)) * 255.9999
-			px.SetPixel(j, i, byte(gcx), byte(gcy), byte(gcz))
-		}
-	}
-}
-
 type DepthBuffer struct {
 	data   []float32
 	Height int
@@ -137,4 +129,115 @@ func (db *DepthBuffer) GetDepth(x, y int) float32 {
 
 func (db *DepthBuffer) Surrounds(x, y int) bool {
 	return x >= 0 && y >= 0 && x < db.Width && y < db.Height
+}
+
+type ColorBuffer struct {
+	data   []tensor.Vector3
+	Height int
+	Width  int
+}
+
+func ColorBufferInit(width, height int) ColorBuffer {
+	data := make([]tensor.Vector3, width*height)
+	return ColorBuffer{data, height, width}
+}
+
+func (cb *ColorBuffer) FillColor(value tensor.Vector3) {
+	for i := 0; i < cb.Width*cb.Height; i++ {
+		cb.data[i] = value
+	}
+}
+
+func (cb *ColorBuffer) SetColor(x, y int, color tensor.Vector3) {
+	cb.data[cb.Width*y+x] = color
+}
+
+func (cb *ColorBuffer) GetColor(x, y int) tensor.Vector3 {
+	return cb.data[cb.Width*y+x]
+}
+
+func (cb *ColorBuffer) Surrounds(x, y int) bool {
+	return x >= 0 && y >= 0 && x < cb.Width && y < cb.Height
+}
+
+// This function and the one above seem slow, but the runtime is so overwhelmingly
+// dominated by the CPU raymarching that these almost don't matter. These should
+// eventually be moved into a real shader that is applied to the framebuffer, but
+// for now this works as a proof of concept
+func (px *ColorBuffer) CorrectGamma() {
+	numThreads := runtime.NumCPU() - 1
+	threads := sync.WaitGroup{}
+	for thread := range numThreads {
+		threads.Go(func() {
+			startrow := thread * px.Height / numThreads
+			endrow := (thread + 1) * px.Height / numThreads
+
+			for row := startrow; row < endrow; row++ {
+				for col := 0; col < px.Width; col++ {
+					color := px.GetColor(col, row)
+					cx, cy, cz := color.Elms()
+					gcx := math32.Pow((float32(cx)/256.0), 0.4) * 255.99999
+					gcy := math32.Pow((float32(cy)/256.0), 0.4) * 255.99999
+					gcz := math32.Pow((float32(cz)/256.0), 0.4) * 255.99999
+					px.SetColor(col, row, tensor.Vec3(gcx, gcy, gcz))
+				}
+			}
+		})
+	}
+	threads.Wait()
+}
+
+// Compact storage for an array of bools
+type BitArray struct {
+	bits []uint64
+}
+
+func BitArrayInit(len int) BitArray {
+	if len%64 != 0 {
+		len += 64
+	}
+	len = len / 64
+	bits := make([]uint64, len)
+	for i := range len {
+		bits[i] = 0
+	}
+	return BitArray{bits}
+}
+
+func (bits *BitArray) Get(index int) bool {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	return bits.bits[bucket]&mask != 0
+}
+
+func (bits *BitArray) Set(index int) {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	bits.bits[bucket] |= mask
+}
+
+func (bits *BitArray) Put(index int, value bool) {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	if value {
+		bits.bits[bucket] |= mask
+	} else {
+		bits.bits[bucket] &= ^mask
+	}
+}
+
+func (bits *BitArray) Reset(index int) {
+	bucket := index / 64
+	shift := index % 64
+	mask := uint64(1) << shift
+	bits.bits[bucket] ^= mask
+}
+
+func (bits *BitArray) Clear() {
+	for i := range bits.bits {
+		bits.bits[i] = 0
+	}
 }

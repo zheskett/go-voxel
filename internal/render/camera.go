@@ -19,7 +19,7 @@ type CameraRayBasis struct {
 	halfheight float32
 }
 
-func CameraRayBasisInit(cam *Camera, pix *Pixels) CameraRayBasis {
+func CameraRayBasisInit(cam *Camera, pix *ColorBuffer) CameraRayBasis {
 	scale := math32.Tan(cam.Fov * math32.Pi / 360.0)
 	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
 
@@ -101,7 +101,7 @@ func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ra
 	}
 }
 
-func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *Pixels, tick uint) {
+func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *ColorBuffer, tick uint) {
 	basis := CameraRayBasisInit(cam, pix)
 
 	numThreads := runtime.NumCPU() - 1
@@ -124,14 +124,8 @@ func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *Pixels, tick uint) {
 						shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
 						// shadedintensity := te.Vec3Splat(0.8)
 
-						if math32.IsNaN(shadedintensity.X) || math32.IsNaN(shadedintensity.Y) || math32.IsNaN(shadedintensity.Z) {
-							panic("I don't know how this keeps happening")
-						}
-
-						// // Make sure that the minimum brightness even in complete shadow is 10%
-						shadedcolor := shadedintensity.ComponentMax(MinLuminosity).MulComponent(color).ComponentMin(254.9999)
-
-						pix.SetPixel(col, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
+						shadedcolor := shadedintensity.ComponentMax(MinLuminosity).MulComponent(color)
+						pix.SetColor(col, row, shadedcolor)
 					}
 				}
 			}

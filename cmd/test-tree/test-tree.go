@@ -35,7 +35,7 @@ func main() {
 	defer pprof.StopCPUProfile()
 
 	for range 1000 {
-		engine.Camera.RenderVoxels(&engine.Voxels, &engine.Renderer.Pixels, engine.Framedata.Tick)
+		engine.Camera.RenderVoxels(&engine.Voxels, &engine.Renderer.Color, engine.Framedata.Tick)
 		engine.Renderer.Pixels.Dither()
 		engine.Camera.UpdateRotation(1, 1)
 	}

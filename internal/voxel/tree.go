@@ -272,6 +272,9 @@ func OctreeInit(size int) Octree {
 	// Currently, the whole tree is 'lopsided' to one side and not centered around zero
 	// to allow for direct translation from the array storage without coordinate system
 	// transformations
+	if !isPowerOfTwo(size) {
+		panic("voxel octree must have power of two dimensions currently")
+	}
 	return Octree{*TreeNodeInit(BoxInit(0, 0, 0, size), nil)} // Root has no stem
 }
 
@@ -385,4 +388,14 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	}
 
 	return rayhit
+}
+
+func isPowerOfTwo(num int) bool {
+	for num != 1 {
+		if num%2 != 0 {
+			return false
+		}
+		num = num / 2
+	}
+	return true
 }

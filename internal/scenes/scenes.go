@@ -247,10 +247,22 @@ func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
 	for i := range vox.X / 256 {
 		for j := range vox.Y / 256 {
 			for k := range vox.Z / 256 {
-				vox.Lights = append(vox.Lights, vxl.PointLight{
-					Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
-					Color:    te.Vec3(1.0, 0.95, 0.95).Mul(float32(brightness)),
-				})
+				if (i+j+k)%2 == 0 {
+					vox.Lights = append(vox.Lights, vxl.PointLight{
+						Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
+						Color:    te.Vec3(1.0, 0.3, 0.3).Mul(float32(brightness)),
+					})
+				} else if (i+j+k)%3 == 0 {
+					vox.Lights = append(vox.Lights, vxl.PointLight{
+						Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
+						Color:    te.Vec3(0.3, 0.3, 1.0).Mul(float32(brightness)),
+					})
+				} else {
+					vox.Lights = append(vox.Lights, vxl.PointLight{
+						Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
+						Color:    te.Vec3(0.3, 1.0, 0.3).Mul(float32(brightness)),
+					})
+				}
 			}
 		}
 	}
@@ -319,12 +331,12 @@ func VoxelDebugSceneTrees(vox *vxl.VoxelWorld) {
 func VoxelDebugSceneNuke(vox *vxl.VoxelWorld) {
 	brightness := 20000
 	// Add lights every 256 voxels
-	for i := range vox.X / 256 {
-		for j := range vox.Y / 256 {
-			for k := range vox.Z / 256 {
+	for i := range vox.X / 512 {
+		for j := range vox.Y / 512 {
+			for k := range vox.Z / 512 {
 				vox.Lights = append(vox.Lights, vxl.PointLight{
-					Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
-					Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+					Position: te.Vec3(float32(i*512), float32(j*512), float32(k*512)),
+					Color:    te.Vec3(1.0, 0.95, 0.95).Mul(float32(brightness)),
 				})
 			}
 		}

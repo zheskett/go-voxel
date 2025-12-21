@@ -45,8 +45,8 @@ func main() {
 		world.Z = int(renderDist)
 		scenes.VoxelDebugSceneTrees(&world)
 	case 5:
-		renderDist = 1024.0
-		world.Voxels = voxel.OctreeInit(5012)
+		renderDist = 4096.0
+		world.Voxels = voxel.OctreeInit(4096)
 		world.X = int(renderDist)
 		world.Y = int(renderDist)
 		world.Z = int(renderDist)
