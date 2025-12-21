@@ -256,3 +256,9 @@ func (vox *Vox) DebugInfo() {
 		fmt.Printf("\tTrans: %vx%vx%v\n", model.TransX, model.TransY, model.TransZ)
 	}
 }
+
+func (m *Model) ModelOrigin() (int32, int32, int32) {
+	// Apparently _t is applied from the center, not the corner
+	// That's why -m.Size/2 is needed
+	return m.TransX - m.SizeX/2, m.TransY - m.SizeY/2, m.TransZ - m.SizeZ/2
+}

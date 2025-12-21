@@ -221,15 +221,15 @@ func (fb *fileBytes) readDict() voxDict {
 
 // Read a rotation and seek to next position in the file
 // Does not do bounds checking!
-func transRot(val byte) VoxRotation {
-	var rowIdxs [3]byte
-	rowIdxs[0] = val & 0x03 // Last 2 bits
-	rowIdxs[1] = val & 0x0c // Bits 2-3
-	rowIdxs[2] = 3 - rowIdxs[0] - rowIdxs[1]
-	rot := VoxRotation{}
-	rot[0][rowIdxs[0]] = -int8(val & 0x10) // Bit 4
-	rot[1][rowIdxs[1]] = -int8(val & 0x20) // Bit 5
-	rot[2][rowIdxs[2]] = -int8(val & 0x40) // Bit 6
-
-	return rot
-}
+// func transRot(val byte) VoxRotation {
+// 	var rowIdxs [3]byte
+// 	rowIdxs[0] = val & 0x03 // Last 2 bits
+// 	rowIdxs[1] = val & 0x0c // Bits 2-3
+// 	rowIdxs[2] = 3 - rowIdxs[0] - rowIdxs[1]
+// 	rot := VoxRotation{}
+// 	rot[0][rowIdxs[0]] = -int8(val & 0x10) // Bit 4
+// 	rot[1][rowIdxs[1]] = -int8(val & 0x20) // Bit 5
+// 	rot[2][rowIdxs[2]] = -int8(val & 0x40) // Bit 6
+//
+// 	return rot
+// }

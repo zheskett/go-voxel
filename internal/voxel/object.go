@@ -59,9 +59,10 @@ func ConvertVox(vox voxparse.Vox, flipX, flipY, flipZ bool) (VoxelObj, error) {
 	totalVoxels := 0
 	var minX, minY, minZ int16
 	for _, m := range vox.Models {
-		minX = min(int16(m.TransX), minX)
-		minY = min(int16(m.TransY), minY)
-		minZ = min(int16(m.TransZ), minZ)
+		mx, my, mz := m.ModelOrigin()
+		minX = min(int16(mx), minX)
+		minY = min(int16(mz), minY)
+		minZ = min(int16(my), minZ)
 	}
 	for _, m := range vox.Models {
 		vObj.X = max(int16(m.SizeX+m.TransX)-minX, vObj.X)
@@ -73,7 +74,8 @@ func ConvertVox(vox voxparse.Vox, flipX, flipY, flipZ bool) (VoxelObj, error) {
 	for _, m := range vox.Models {
 		for _, v := range m.Voxels {
 			// Again, .vox uses Z as gravity dir
-			x, y, z := int16(v.X)+int16(m.TransX)-minX, int16(v.Z)+int16(m.TransZ)-minY, int16(v.Y)+int16(m.TransY)-minZ
+			originX, originY, originZ := m.ModelOrigin()
+			x, y, z := int16(v.X)+int16(originX)-minX, int16(v.Z)+int16(originZ)-minY, int16(v.Y)+int16(originY)-minZ
 			if flipX {
 				x = vObj.X - x - 1
 			}
