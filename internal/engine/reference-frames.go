@@ -1,32 +1,12 @@
 package engine
 
-import (
-	"github.com/zheskett/go-voxel/internal/tensor"
-)
+import "github.com/zheskett/go-voxel/internal/common"
 
-type refframe uint8
-
-const (
-	FrameWorld refframe = iota
-	FrameCamera
-	FrameVoxel
-)
-
-type ReferenceFrame struct {
-	b11 tensor.Vector3
-	b22 tensor.Vector3
-	b33 tensor.Vector3
+// The global reference frame is exactly what you would expect
+func (engine *Engine) BasisFrame() common.ReferenceFramef {
+	return common.GlobalFramef()
 }
 
-type Basis interface {
-	BasisFrame() ReferenceFrame
-}
-
-func (engine *Engine) BasisFrame() ReferenceFrame {
-	return ReferenceFrame{tensor.Vec3X(), tensor.Vec3Y(), tensor.Vec3Z()}
-}
-
-type FrameChange struct {
-	to   refframe
-	from refframe
+func (engine *Engine) BasisFramei() common.ReferenceFramei {
+	return common.GlobalFramei()
 }

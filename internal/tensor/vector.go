@@ -14,6 +14,11 @@ type Vector3 struct {
 	X, Y, Z float32 // X coordinate
 }
 
+// A 3D integer Vector
+type Vector3i struct {
+	X, Y, Z int
+}
+
 // Start Vector2 Functions
 
 // Creates a 2D Vector from components
@@ -44,6 +49,11 @@ func Vec2Y() Vector2 {
 // Returns the Elements of the vector
 func (v Vector2) Elms() (float32, float32) {
 	return v.X, v.Y
+}
+
+// Returns an array of the vector components in order
+func (v Vector2) AsArray() [2]float32 {
+	return [2]float32{v.X, v.Y}
 }
 
 // Returns the length of the vector
@@ -91,11 +101,6 @@ func (v1 Vector2) Mul(c float32) Vector2 {
 	return Vector2{v1.X * c, v1.Y * c}
 }
 
-// Returns the element-wise product of a vector and a vector
-func (v1 Vector2) MulComponent(v2 Vector2) Vector2 {
-	return Vector2{v1.X * v2.X, v1.Y * v2.Y}
-}
-
 // Returns the quotient of a vector and a scalar
 func (v1 Vector2) Div(c float32) Vector2 {
 	invC := 1.0 / c
@@ -110,6 +115,11 @@ func (v1 Vector2) Dot(v2 Vector2) float32 {
 // Returns the cross product of two vectors
 func (v1 Vector2) Cross(v2 Vector2) Vector2 {
 	return Vector2{v1.X*v2.Y - v1.Y*v2.X, v1.Y*v2.X - v1.X*v2.Y}
+}
+
+// Returns the element-wise product of a vector and a vector
+func (v1 Vector2) MulComponent(v2 Vector2) Vector2 {
+	return Vector2{v1.X * v2.X, v1.Y * v2.Y}
 }
 
 // Performs a min comparison for all the elements of the vector
@@ -191,6 +201,11 @@ func (v Vector3) Elms() (float32, float32, float32) {
 	return v.X, v.Y, v.Z
 }
 
+// Returns an array of the vector components in order
+func (v Vector3) AsArray() [3]float32 {
+	return [3]float32{v.X, v.Y, v.Z}
+}
+
 // Returns the length of the vector
 func (v Vector3) Len() float32 {
 	return math32.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
@@ -236,11 +251,6 @@ func (v1 Vector3) Mul(c float32) Vector3 {
 	return Vector3{v1.X * c, v1.Y * c, v1.Z * c}
 }
 
-// Returns the element-wise product of a vector and a vector
-func (v1 Vector3) MulComponent(v2 Vector3) Vector3 {
-	return Vector3{v1.X * v2.X, v1.Y * v2.Y, v1.Z * v2.Z}
-}
-
 // Returns the quotient of a vector and a scalar
 func (v1 Vector3) Div(c float32) Vector3 {
 	invC := 1.0 / c
@@ -259,6 +269,11 @@ func (v1 Vector3) Cross(v2 Vector3) Vector3 {
 		v1.Z*v2.X - v1.X*v2.Z,
 		v1.X*v2.Y - v1.Y*v2.X,
 	}
+}
+
+// Returns the element-wise product of a vector and a vector
+func (v1 Vector3) MulComponent(v2 Vector3) Vector3 {
+	return Vector3{v1.X * v2.X, v1.Y * v2.Y, v1.Z * v2.Z}
 }
 
 // Performs a min comparison for all the elements of the vector
@@ -302,3 +317,83 @@ func (v Vector3) Inv() Vector3 {
 }
 
 // End Vector3 Functions
+
+// Start Vector3i Functions
+
+// Creates a 3D Vector from components
+func Vec3i(x, y, z int) Vector3i {
+	return Vector3i{x, y, z}
+}
+
+// Creates the 3D zero vector
+func Vec3iZero() Vector3i {
+	return Vector3i{X: 0, Y: 0, Z: 0}
+}
+
+// Creates a 3D vector with similar components
+func Vec3iSplat(c int) Vector3i {
+	return Vec3i(c, c, c)
+}
+
+// Creates an x unit vector
+func Vec3iX() Vector3i {
+	return Vector3i{X: 1, Y: 0, Z: 0}
+}
+
+// Creates an y unit vector
+func Vec3iY() Vector3i {
+	return Vector3i{X: 0, Y: 1, Z: 0}
+}
+
+// Creates an z unit vector
+func Vec3iZ() Vector3i {
+	return Vector3i{X: 0, Y: 0, Z: 1}
+}
+
+// Returns the Elements of the vector
+func (v Vector3i) Elms() (int, int, int) {
+	return v.X, v.Y, v.Z
+}
+
+// Returns an array of the vector components in order
+func (v1 Vector3i) AsArray() [3]int {
+	return [3]int{v1.X, v1.Y, v1.Z}
+}
+
+// Returns the float32 equivalent vector
+func (v1 Vector3i) AsVec3f() Vector3 {
+	return Vec3(float32(v1.X), float32(v1.Y), float32(v1.Z))
+}
+
+// Returns the negative of the vector
+func (v1 Vector3i) Neg() Vector3i {
+	return Vec3i(-v1.X, -v1.Y, -v1.Z)
+}
+
+// Returns the sum of two vectors
+func (v1 Vector3i) Add(v2 Vector3i) Vector3i {
+	return Vec3i(v1.X+v2.X, v1.Y+v2.Y, v1.Z+v2.Z)
+}
+
+// Returns the difference of two vectors
+func (v1 Vector3i) Sub(v2 Vector3i) Vector3i {
+	return Vec3i(v1.X-v2.X, v1.Y-v2.Y, v1.Z-v2.Z)
+}
+
+// Returns the product of a vector and a scalar
+func (v1 Vector3i) Mul(s int) Vector3i {
+	return Vec3i(v1.X*s, v1.Y*s, v1.Z*s)
+}
+
+// Returns the quotient of a vector and a scalar
+// Need to be careful because this is integer division
+func (v1 Vector3i) Div(s int) Vector3i {
+	return Vec3i(v1.X/s, v1.Y/s, v1.Z/s)
+}
+
+// Returns the dot product of two vectors
+func (v1 Vector3i) Dot(v2 Vector3i) int {
+	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z
+}
+
+// End Vector3i Functions

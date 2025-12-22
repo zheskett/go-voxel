@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/zheskett/go-voxel/internal/common"
 	"github.com/zheskett/go-voxel/internal/engine"
 	ren "github.com/zheskett/go-voxel/internal/render"
 	"github.com/zheskett/go-voxel/internal/scenes"
-	te "github.com/zheskett/go-voxel/internal/tensor"
-	vxl "github.com/zheskett/go-voxel/internal/voxel"
+	"github.com/zheskett/go-voxel/internal/tensor"
+	"github.com/zheskett/go-voxel/internal/voxel"
 )
 
 func init() {
@@ -18,44 +19,53 @@ func init() {
 }
 
 func main() {
-	vox := vxl.VoxelsInit(256, 256, 256)
 	renderDist := float32(256.0)
+	var world voxel.VoxelWorld
 	var scene int
-	fmt.Printf("Enter 1 for the big scene, 2 for room, 3 for big bunny, 4 for sponza, 5 for nuke, anything else for small scene\n")
+	fmt.Println("1 for the big scene\n" +
+		"2 for room\n" +
+		"3 for big bunny\n" +
+		"4 for sponza\n" +
+		"5 for nuke\n" +
+		"Or anything else for small scene")
 	fmt.Scanln(&scene)
 	switch scene {
 	case 1:
-		scenes.VoxelDebugSceneBig(&vox)
+		renderDist = 512.0
+		scenes.VoxelDebugSceneBig(&world)
 	case 2:
-		scenes.VoxelDebugEmptyScene(&vox)
+		renderDist = 512.0
+		scenes.VoxelDebugEmptyScene(&world)
 	case 3:
-		scenes.VoxelDebugSceneHugeBunny(&vox)
-		renderDist = 560.0
-	case 4:
-		scenes.VoxelDebugSceneTrees(&vox)
-		renderDist = 560.0
-	case 5:
-		scenes.VoxelDebugSceneNuke(&vox)
 		renderDist = 1024.0
+		scenes.VoxelDebugSceneHugeBunny(&world)
+	case 4:
+		renderDist = 1024.0
+		scenes.VoxelDebugSceneTrees(&world)
+	case 5:
+		renderDist = 4096.0
+		scenes.VoxelDebugSceneNuke(&world)
 	default:
-		scenes.VoxelDebugSceneSmall(&vox)
+		scenes.VoxelDebugSceneSmall(&world)
 	}
+	scenes.LayoutCoordinateSystem(&world)
+
 	rm, window := ren.RenderManagerInit()
 	cam := ren.CameraInit()
+	cam.Pos = tensor.Vec3Splat(16)
 	cam.Movespeed = 20
 	cam.Lookspeed = 0.005
 	cam.Fov = 90
 	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
-	cam.Pos = te.Vec3(16, 4, 16)
 	cam.RenderDistance = renderDist
 
 	engine := engine.Engine{}
 	engine.Renderer = rm
 	engine.Window = window
 	engine.Camera = cam
-	engine.Voxels = vox
-	engine.Framedata = ren.FrameDataInit()
-	engine.SetScrollCallback()
+	engine.Voxels = world
+	engine.Framedata = common.FrameDataInit()
+	engine.SetCallbacks()
 
 	for {
 		engine.UpdateInputs()

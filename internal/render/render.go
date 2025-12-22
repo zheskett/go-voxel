@@ -2,13 +2,10 @@
 package render
 
 import (
-	"fmt"
 	"runtime"
-	"time"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
 // Window info
@@ -26,84 +23,26 @@ const (
 	BackgroundBlue  = 40
 )
 
-// FrameData allows camera movements to be made independent of FPS for a smoother movements
-type FrameData struct {
-	Previous time.Time
-	Deltat   float32
-	Tick     uint
-	mouse    tensor.Vector2
-}
+// Number of goroutines that are dispatched to render the frame
+const (
+	RenderThreads = 16
+)
 
-func FrameDataInit() FrameData {
-	return FrameData{Previous: time.Now()}
-}
-
-func (data *FrameData) Update() {
-	data.Deltat = float32(time.Since(data.Previous).Seconds())
-	data.Previous = time.Now()
-	data.Tick += 1
-}
-
-func (data *FrameData) ReportFps() {
-	fmt.Printf("FPS: %.2f\n", 1.0/data.Deltat)
-}
-
-func (data *FrameData) GetMouseDelta(window *glfw.Window) (float32, float32) {
-	mx_f64, my_f64 := window.GetCursorPos()
-	mx, my := float32(mx_f64), float32(my_f64)
-	dx, dy := data.mouse.X-mx, data.mouse.Y-my
-	data.mouse = tensor.Vec2(mx, my)
-
-	return dx, dy
-}
-
-// Pixels contains the data for each pixel on the screen.
-// Every pixel is 4 bytes, RGBA
-type Pixels struct {
-	data   []byte
-	Height int
-	Width  int
-}
-
-func PixelsInit(width, height int) Pixels {
-	data := make([]byte, width*height*4)
-	for i := 0; i < width*height*4; i++ {
-		data[i] = 0
-	}
-	return Pixels{data, height, width}
-}
-
-func (px *Pixels) FillPixels(r, g, b byte) {
-	for i := 0; i < px.Width*px.Height; i++ {
-		px.data[4*i+0] = r
-		px.data[4*i+1] = g
-		px.data[4*i+2] = b
-	}
-}
-
-func (px *Pixels) SetPixel(x, y int, r, g, b byte) {
-	px.data[4*(px.Width*y+x)+0] = r
-	px.data[4*(px.Width*y+x)+1] = g
-	px.data[4*(px.Width*y+x)+2] = b
-}
-
-func (px *Pixels) GetPixel(x, y int) [3]byte {
-	return [3]byte{
-		px.data[4*(px.Width*y+x)+0],
-		px.data[4*(px.Width*y+x)+1],
-		px.data[4*(px.Width*y+x)+2],
-	}
-}
-
-func (px *Pixels) Surrounds(x, y int) bool {
-	return x >= 0 && x < px.Width && y >= 0 && y < px.Height
-}
+// Set the minimum luminance even for complete shadow
+const (
+	MinLuminosity = 0.01
+)
 
 // RenderManager contains state for the rendering
 type RenderManager struct {
+	// Handles for glfw draw call
 	renderTexture uint32
 	fbo           uint32
-	Pixels        Pixels
+
+	// Buffers that are used for the software renderer to write into
+	Pixels Pixels      // RGBA byte buffer (displayed to screen)
+	Color  ColorBuffer // Vec3 color buffer (for internal rendering)
+	Depth  DepthBuffer // Depth buffer
 }
 
 // RenderManagerInit initializes the render manager
@@ -158,8 +97,19 @@ func RenderManagerInit() (*RenderManager, *glfw.Window) {
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rm.renderTexture, 0)
 
 	rm.Pixels = PixelsInit(TextureWidth, TextureHeight)
+	rm.Color = ColorBufferInit(TextureWidth, TextureHeight)
 
 	return &rm, window
+}
+
+func (rm *RenderManager) LoadPixels() {
+	for row := range rm.Pixels.Height {
+		for col := range rm.Pixels.Width {
+			color := rm.Color.GetColor(col, row)
+			color = color.ComponentMin(255.99999)
+			rm.Pixels.SetPixel(col, row, byte(color.X), byte(color.Y), byte(color.Z))
+		}
+	}
 }
 
 // Render renders the current state
@@ -176,6 +126,7 @@ func (rm *RenderManager) Render(window *glfw.Window) {
 
 	fbWidth, fbHeight := window.GetFramebufferSize()
 	gl.BlitFramebuffer(0, 0, TextureWidth, TextureHeight, 0, 0, int32(fbWidth), int32(fbHeight), gl.COLOR_BUFFER_BIT, gl.NEAREST)
+	window.SetAspectRatio(fbWidth, fbHeight)
 	window.SwapBuffers()
 	glfw.PollEvents()
 }

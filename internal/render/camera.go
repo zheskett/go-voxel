@@ -1,24 +1,26 @@
-// There are duplicates of all the motion functions, with an FPS version, that doesn't include rolling
 package render
 
 import (
+	"runtime"
 	"sync"
 
 	"github.com/chewxy/math32"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/zheskett/go-voxel/internal/common"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
 
 // Holds all the required information to get a ray's offset from the cam's front vector at any given pixel
 type CameraRayBasis struct {
-	drdx       te.Vector3
-	dudy       te.Vector3
+	drdx te.Vector3
+	dudy te.Vector3
+
 	halfwidth  float32
 	halfheight float32
 }
 
-func CameraRayBasisInit(cam *Camera, pix *Pixels) CameraRayBasis {
+func CameraRayBasisInit(cam *Camera, pix *ColorBuffer) CameraRayBasis {
 	scale := math32.Tan(cam.Fov * math32.Pi / 360.0)
 	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
 
@@ -29,48 +31,41 @@ func CameraRayBasisInit(cam *Camera, pix *Pixels) CameraRayBasis {
 }
 
 type Camera struct {
-	Fvec           te.Vector3
-	Rvec           te.Vector3
-	Uvec           te.Vector3
-	Wupvec         te.Vector3
-	Pos            te.Vector3
-	Lookspeed      float32
-	Movespeed      float32
+	Pitch float32
+	Yaw   float32
+
+	Fvec   te.Vector3
+	Rvec   te.Vector3
+	Uvec   te.Vector3
+	Wupvec te.Vector3
+	Pos    te.Vector3
+
+	Lookspeed float32
+	Movespeed float32
+
 	Fov            float32
 	Aspect         float32
 	RenderDistance float32
-
-	Pitch float32
-	Yaw   float32
 }
 
 func CameraInit() Camera {
 	return Camera{
+		Yaw:   0.0,
+		Pitch: math32.Pi / 4.0,
+
 		Fvec:   te.Vec3Z(),
 		Rvec:   te.Vec3X(),
 		Uvec:   te.Vec3Y(),
 		Wupvec: te.Vec3Y(),
-
-		Yaw:   0.0,
-		Pitch: math32.Pi / 4.0,
 	}
 }
 
-func (cam *Camera) UpdateRotation(rx, ry, rz float32, frame *FrameData) {
-	rot := cam.Fvec.Mul(rz).Add(cam.Uvec.Mul(ry)).Add(cam.Rvec.Mul(rx)).Mul(cam.Lookspeed).Mul(frame.Deltat)
-	att := te.Matrix3x3FromCols(cam.Rvec, cam.Uvec, cam.Fvec)
-	att = te.Rotate3DXYZ(rot.X, rot.Y, rot.Z).Mul(att)
-
-	cam.Fvec = att.Col(2)
-	cam.Uvec = att.Col(1)
-	cam.Rvec = att.Col(0)
-}
-
-// These are really messy and will be cleaned up eventually I swear
-func (cam *Camera) UpdateRotationFPS(pitch, yaw float32) {
+func (cam *Camera) UpdateRotation(pitch, yaw float32) {
 	cam.Pitch += pitch * cam.Lookspeed
 	cam.Yaw += yaw * cam.Lookspeed
+	// Confine pitch and yaw
 	cam.Pitch = math32.Min(math32.Max(cam.Pitch, -math32.Pi/2*0.99), math32.Pi/2*0.99)
+	cam.Yaw = math32.Mod(cam.Yaw, 2.0*math32.Pi)
 
 	front := te.Rotate3DY(cam.Yaw).Mul(te.Rotate3DX(cam.Pitch)).MulVec(te.Vec3Z())
 	right := front.Cross(cam.Wupvec)
@@ -81,15 +76,7 @@ func (cam *Camera) UpdateRotationFPS(pitch, yaw float32) {
 	cam.Uvec = up.Normalized()
 }
 
-func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *FrameData) {
-	movement := cam.Movespeed * frame.Deltat
-	forward := cam.Fvec.Mul(dz * movement)
-	vertical := cam.Uvec.Mul(dy * movement)
-	lateral := cam.Rvec.Mul(dx * movement)
-	cam.Pos = cam.Pos.Add(forward).Add(vertical).Add(lateral)
-}
-
-func (cam *Camera) UpdatePositionFPS(dx, dy, dz float32, frame *FrameData) {
+func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *common.FrameData) {
 	dx, dy, dz = te.Vec3(dx, dy, dz).NormalizedOrZero().Mul(cam.Movespeed * frame.Deltat).Elms()
 	clampedfront := te.Vec3(cam.Fvec.X, 0, cam.Fvec.Z).Normalized()
 	forward := clampedfront.Mul(dz)
@@ -115,29 +102,30 @@ func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ra
 	}
 }
 
-func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
+func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *ColorBuffer, tick uint) {
 	basis := CameraRayBasisInit(cam, pix)
-	// Shouldn't be here, but tbh light info shouldn't be in the Voxel struct at all probably
-	vox.LightCached.Clear()
 
-	// Iterate and spawn a thread for each row of the pixel buffer
+	numThreads := runtime.NumCPU() - 1
 	threads := sync.WaitGroup{}
-	for row := 0; row < pix.Height; row++ {
+	for thread := range numThreads {
 		threads.Go(func() {
-			// Iterate each column of the pixel row
-			for column := 0; column < pix.Width; column++ {
-				ray := cam.getPixelRay(column, row, basis)
+			startrow := thread * pix.Height / numThreads
+			endrow := (thread + 1) * pix.Height / numThreads
 
-				hit := vox.MarchRay(ray)
-				if hit.Hit {
-					color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
+			for row := startrow; row < endrow; row++ {
+				for col := 0; col < pix.Width; col++ {
 
-					/* Two choices for lighting, doing it per pixel or per voxel */
-					shadedintensity := GetPixelShading(vox, hit, cam.RenderDistance)
-					// shadedintensity := GetVoxelShading(vox, hit, cam.RenderDistance)
+					ray := cam.getPixelRay(col, row, basis)
 
-					shadedcolor := shadedintensity.MulComponent(color).ComponentMin(255.0)
-					pix.SetPixel(column, row, byte(shadedcolor.X), byte(shadedcolor.Y), byte(shadedcolor.Z))
+					hit := vtree.Voxels.MarchRay(ray)
+					if hit.Hit {
+						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
+
+						shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
+
+						shadedcolor := shadedintensity.ComponentMax(MinLuminosity).MulComponent(color)
+						pix.SetColor(col, row, shadedcolor)
+					}
 				}
 			}
 		})
@@ -145,73 +133,25 @@ func (cam *Camera) RenderVoxels(vox *vxl.Voxels, pix *Pixels) {
 	threads.Wait()
 }
 
-func UpdateCamInputGLFW(cam *Camera, window *glfw.Window, frame *FrameData) {
-	rx, ry, rz := 0, 0, 0
+func (cam *Camera) UpdateCamInput(frame *common.FrameData) {
 	tx, ty, tz := 0, 0, 0
-	if window.GetKey(glfw.KeyW) == glfw.Press {
+	if frame.Keys[glfw.KeyW] {
 		tz++
 	}
-	if window.GetKey(glfw.KeyS) == glfw.Press {
+	if frame.Keys[glfw.KeyS] {
 		tz--
 	}
-	if window.GetKey(glfw.KeyA) == glfw.Press {
+	if frame.Keys[glfw.KeyA] {
 		tx--
 	}
-	if window.GetKey(glfw.KeyD) == glfw.Press {
+	if frame.Keys[glfw.KeyD] {
 		tx++
 	}
-	if window.GetKey(glfw.KeySpace) == glfw.Press {
+	if frame.Keys[glfw.KeySpace] {
 		ty--
 	}
-	if window.GetKey(glfw.KeyLeftShift) == glfw.Press {
+	if frame.Keys[glfw.KeyLeftShift] {
 		ty++
 	}
-	if window.GetKey(glfw.KeyUp) == glfw.Press {
-		rx++
-	}
-	if window.GetKey(glfw.KeyDown) == glfw.Press {
-		rx--
-	}
-	if window.GetKey(glfw.KeyRight) == glfw.Press {
-		ry++
-	}
-	if window.GetKey(glfw.KeyLeft) == glfw.Press {
-		ry--
-	}
-	if window.GetKey(glfw.KeyQ) == glfw.Press {
-		rz--
-	}
-	if window.GetKey(glfw.KeyE) == glfw.Press {
-		rz++
-	}
-	cam.UpdateRotation(float32(rx), float32(ry), float32(rz), frame)
 	cam.UpdatePosition(float32(tx), float32(ty), float32(tz), frame)
-}
-
-func UpdateCamInputGLFWFPS(cam *Camera, window *glfw.Window, frame *FrameData) {
-	tx, ty, tz := 0, 0, 0
-	if window.GetKey(glfw.KeyW) == glfw.Press {
-		tz++
-	}
-	if window.GetKey(glfw.KeyS) == glfw.Press {
-		tz--
-	}
-	if window.GetKey(glfw.KeyA) == glfw.Press {
-		tx--
-	}
-	if window.GetKey(glfw.KeyD) == glfw.Press {
-		tx++
-	}
-	if window.GetKey(glfw.KeySpace) == glfw.Press {
-		ty--
-	}
-	if window.GetKey(glfw.KeyLeftShift) == glfw.Press {
-		ty++
-	}
-	if window.GetKey(glfw.KeyT) == glfw.Press {
-		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
-	}
-	dx, dy := frame.GetMouseDelta(window)
-	cam.UpdateRotationFPS(dy, dx)
-	cam.UpdatePositionFPS(float32(tx), float32(ty), float32(tz), frame)
 }
