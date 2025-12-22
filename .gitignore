@@ -8,6 +8,9 @@
 *.so
 *.dylib
 
+# My Spell Check
+.typos.toml
+
 # go-voxel binary
 /go-voxel
 /test-parser
