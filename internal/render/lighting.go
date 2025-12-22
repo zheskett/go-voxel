@@ -1,7 +1,8 @@
 package render
 
 import (
-	"github.com/chewxy/math32"
+	"math"
+
 	te "github.com/zheskett/go-voxel/internal/tensor"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
@@ -14,7 +15,7 @@ const (
 
 // Performs the per-pixel lighting by sending secondary rays back towards all of the lights in the scene
 // Much slower than below funcs, but looks very nice
-func GetPixelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) te.Vector3 {
+func GetPixelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float64) te.Vector3 {
 	intensity := te.Vec3Zero()
 	for _, light := range vox.Lights {
 		lightpos := light.Position.Sub(hit.Position)
@@ -32,7 +33,7 @@ func GetPixelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) te.Vecto
 		recastray := vxl.Ray{
 			Origin: recastpos,
 			Dir:    lightdir,
-			Tmax:   math32.Min(lightdist, tmax),
+			Tmax:   math.Min(lightdist, tmax),
 		}
 
 		shadowcast := vox.Voxels.MarchRay(recastray)
@@ -40,7 +41,7 @@ func GetPixelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) te.Vecto
 		// If we don't hit anything, the pixel has direct view of the light, as the rayline
 		// has no obstruction
 		if !shadowcast.Hit {
-			brightness := math32.Max(0.0, hit.Normal.Dot(lightdir)) * lightFalloffCurve(lightdist)
+			brightness := math.Max(0.0, hit.Normal.Dot(lightdir)) * lightFalloffCurve(lightdist)
 			intensity = intensity.Add(light.Color.Mul(brightness))
 		}
 	}
@@ -49,7 +50,7 @@ func GetPixelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) te.Vecto
 }
 
 // Gets the per-voxel lighting from cache or calculating it
-func GetVoxelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32, tick uint) te.Vector3 {
+func GetVoxelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float64, tick uint) te.Vector3 {
 	var light vxl.VoxelLighting
 	// The current solution for "baked" lighting, basically only gets calculated one
 	// time for each voxel when it first gets hit by a ray and otherwise reuses the
@@ -62,7 +63,7 @@ func GetVoxelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32, tick uin
 		hit.Voxel.Light = light
 	}
 
-	brightness := math32.Max(0.0, hit.Normal.Dot(light.Dir))
+	brightness := math.Max(0.0, hit.Normal.Dot(light.Dir))
 	return light.Light.Mul(brightness)
 }
 
@@ -72,12 +73,12 @@ func GetVoxelShading(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32, tick uin
 // issue where walls must be < 1 voxel thick when using this or they won't actually
 // be opaque, as the light ray basically jumps out to the nearest corner of the
 // parent voxel
-func shadeVoxel(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) vxl.VoxelLighting {
+func shadeVoxel(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float64) vxl.VoxelLighting {
 	intensity := te.Vec3Zero()
 	direction := te.Vec3Zero()
-	x, y, z := float32(hit.IntPos[0]), float32(hit.IntPos[1]), float32(hit.IntPos[2])
+	x, y, z := float64(hit.IntPos[0]), float64(hit.IntPos[1]), float64(hit.IntPos[2])
 	voxelcenter := te.Vec3(x+0.5, y+0.5, z+0.5)
-	distanceoutvoxel := math32.Sqrt(0.5 * 0.5 * 3)
+	distanceoutvoxel := math.Sqrt(0.5 * 0.5 * 3)
 	for _, light := range vox.Lights {
 		lightpos := light.Position.Sub(voxelcenter)
 		lightdist := lightpos.Len()
@@ -109,6 +110,6 @@ func shadeVoxel(vox *vxl.VoxelWorld, hit vxl.RayHit, tmax float32) vxl.VoxelLigh
 	return vxl.VoxelLighting{Light: intensity, Dir: direction}
 }
 
-func lightFalloffCurve(dist float32) float32 {
+func lightFalloffCurve(dist float64) float64 {
 	return 1.0 / max(dist*dist, MinDistance*MinDistance)
 }

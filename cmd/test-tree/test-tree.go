@@ -22,7 +22,7 @@ func main() {
 	cam := render.CameraInit()
 	cam.Lookspeed = 0.005
 	cam.Fov = 90
-	cam.Aspect = float32(400) / float32(300)
+	cam.Aspect = float64(400) / float64(300)
 	cam.RenderDistance = 4096
 	cam.Pos = tensor.Vec3Splat(256)
 	engine := engine.Engine{}

@@ -1,10 +1,10 @@
 package render
 
 import (
+	"math"
 	"runtime"
 	"sync"
 
-	"github.com/chewxy/math32"
 	"github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -103,27 +103,27 @@ func (px *Pixels) Dither() {
 }
 
 type DepthBuffer struct {
-	data   []float32
+	data   []float64
 	Height int
 	Width  int
 }
 
 func DepthBufferInit(width, height int) DepthBuffer {
-	data := make([]float32, width*height)
+	data := make([]float64, width*height)
 	return DepthBuffer{data, height, width}
 }
 
-func (db *DepthBuffer) FillDepth(value float32) {
+func (db *DepthBuffer) FillDepth(value float64) {
 	for i := 0; i < db.Width*db.Height; i++ {
 		db.data[i] = value
 	}
 }
 
-func (db *DepthBuffer) SetDepth(x, y int, depth float32) {
+func (db *DepthBuffer) SetDepth(x, y int, depth float64) {
 	db.data[db.Width*y+x] = depth
 }
 
-func (db *DepthBuffer) GetDepth(x, y int) float32 {
+func (db *DepthBuffer) GetDepth(x, y int) float64 {
 	return db.data[db.Width*y+x]
 }
 
@@ -176,9 +176,9 @@ func (px *ColorBuffer) CorrectGamma() {
 				for col := 0; col < px.Width; col++ {
 					color := px.GetColor(col, row)
 					cx, cy, cz := color.Elms()
-					gcx := math32.Pow((float32(cx)/256.0), 0.4) * 255.99999
-					gcy := math32.Pow((float32(cy)/256.0), 0.4) * 255.99999
-					gcz := math32.Pow((float32(cz)/256.0), 0.4) * 255.99999
+					gcx := math.Pow((float64(cx)/256.0), 0.4) * 255.99999
+					gcy := math.Pow((float64(cy)/256.0), 0.4) * 255.99999
+					gcz := math.Pow((float64(cz)/256.0), 0.4) * 255.99999
 					px.SetColor(col, row, tensor.Vec3(gcx, gcy, gcz))
 				}
 			}

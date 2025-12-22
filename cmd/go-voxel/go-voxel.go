@@ -19,7 +19,7 @@ func init() {
 }
 
 func main() {
-	renderDist := float32(256.0)
+	renderDist := float64(256.0)
 	var world voxel.VoxelWorld
 	var scene int
 	fmt.Println("1 for the big scene\n" +
@@ -56,7 +56,7 @@ func main() {
 	cam.Movespeed = 20
 	cam.Lookspeed = 0.005
 	cam.Fov = 90
-	cam.Aspect = float32(rm.Pixels.Width) / float32(rm.Pixels.Height)
+	cam.Aspect = float64(rm.Pixels.Width) / float64(rm.Pixels.Height)
 	cam.RenderDistance = renderDist
 
 	engine := engine.Engine{}

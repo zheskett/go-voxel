@@ -1,7 +1,9 @@
 package voxel
 
 import (
-	"github.com/chewxy/math32"
+	"fmt"
+	"math"
+
 	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -45,7 +47,7 @@ func (box *Box) surrounds(v te.Vector3i) bool {
 
 // Slab-method of AABB and ray intersection
 // Returns (min_t, max_t) corresponding to the rays' entrance and exit time
-func (box *Box) RayIntersection(ray Ray) (float32, float32) {
+func (box *Box) RayIntersection(ray Ray) (float64, float64) {
 	// TODO: This needs to not be recalculated each time -- either take MarchData or store that on the ray
 	invs := ray.Dir.Inv()
 	low := box.Low.AsVec3f()
@@ -67,7 +69,7 @@ func (box *Box) RayIntersection(ray Ray) (float32, float32) {
 	tmax = min(tmax, max(tz1, tz2))
 
 	if tmax < tmin || tmax < 0 {
-		return math32.Inf(1), math32.Inf(-1)
+		return math.Inf(1), math.Inf(-1)
 	}
 
 	return tmin, tmax
@@ -341,18 +343,23 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	//
 	// It has something to do with bounce-rays from lighting being cast on null-hits.
 	// The error is likely coming from floating point errors in in grazing rays
-	for range 100 {
+	for {
 		if data.Time > data.Tmax {
 			break
 		}
 
 		pos := ray.Origin.Add(ray.Dir.Mul(data.Time + VoxelRayDelta))
-		x, y, z := int(math32.Floor(pos.X)), int(math32.Floor(pos.Y)), int(math32.Floor(pos.Z))
+		x, y, z := int(math.Floor(pos.X)), int(math.Floor(pos.Y)), int(math.Floor(pos.Z))
 		tw.GotoAbsolute(x, y, z)
 
 		if tw.Node.IsEmpty() {
+			fmt.Printf("Here %v, %v\n", data.Time, ray)
 			_, nodeexit := tw.Node.Box.RayIntersection(ray)
 			data.Time = max(nodeexit, data.Time+VoxelRayDelta)
+			fmt.Printf("here2 %v, %v, %v\n", data.Time, nodeexit, data.Time+VoxelRayDelta)
+			if math.IsNaN(data.Time) {
+				panic("hi")
+			}
 		} else if tw.Node.IsLeaf() {
 			return RayHit{
 				Hit:      true,

@@ -1,6 +1,8 @@
 package tensor
 
-import "github.com/chewxy/math32"
+import (
+	"math"
+)
 
 // A Matrix is stored in column-major order
 type Matrix interface {
@@ -9,13 +11,13 @@ type Matrix interface {
 	// Returns the number of columns in this matrix
 	Cols()
 	// Returns the element at the given row and column
-	At(row, col int) float32
+	At(row, col int) float64
 	// Returns the determinant of a matrix
-	Det() float32
+	Det() float64
 }
 
-type Matrix2x2 [2 * 2]float32
-type Matrix3x3 [3 * 3]float32
+type Matrix2x2 [2 * 2]float64
+type Matrix3x3 [3 * 3]float64
 
 // Start Matrix2x2 Functions
 // Start Matrix2x2 implements Matrix
@@ -33,12 +35,12 @@ func (m Matrix2x2) Cols() int {
 // Returns the element at the given row and column.
 // This is 0-indexed.
 // Equivalent to mat[col * 2 + row]
-func (m Matrix2x2) At(row, col int) float32 {
+func (m Matrix2x2) At(row, col int) float64 {
 	return m[col*2+row]
 }
 
 // Returns the determinant of a matrix
-func (m Matrix2x2) Det() float32 {
+func (m Matrix2x2) Det() float64 {
 	return m[0]*m[3] - m[1]*m[2]
 }
 
@@ -65,8 +67,8 @@ func Matrix2x2FromCols(v1, v2 Vector2) Matrix2x2 {
 }
 
 // Rotate2D returns a 2D rotation matrix
-func Rotate2D(angle float32) Matrix2x2 {
-	sin, cos := math32.Sincos(angle)
+func Rotate2D(angle float64) Matrix2x2 {
+	sin, cos := math.Sincos(angle)
 	return Matrix2x2{cos, sin, -sin, cos}
 }
 
@@ -113,12 +115,12 @@ func (m Matrix3x3) Cols() int {
 // Returns the element at the given row and column.
 // This is 0-indexed.
 // Equivalent to mat[col * 3 + row]
-func (m Matrix3x3) At(row, col int) float32 {
+func (m Matrix3x3) At(row, col int) float64 {
 	return m[col*3+row]
 }
 
 // Returns the determinant of a matrix
-func (m Matrix3x3) Det() float32 {
+func (m Matrix3x3) Det() float64 {
 	return (m[0]*m[4]*m[8] + m[3]*m[7]*m[2] + m[6]*m[1]*m[5] -
 		m[6]*m[4]*m[2] - m[3]*m[1]*m[8] - m[0]*m[7]*m[5])
 }
@@ -150,8 +152,8 @@ func Matrix3x3FromCols(v1, v2, v3 Vector3) Matrix3x3 {
 // [1 0 0]
 // [0 cos -sin]
 // [0 sin cos]
-func Rotate3DX(angle float32) Matrix3x3 {
-	sin, cos := math32.Sincos(angle)
+func Rotate3DX(angle float64) Matrix3x3 {
+	sin, cos := math.Sincos(angle)
 	return Matrix3x3{1, 0, 0, 0, cos, sin, 0, -sin, cos}
 }
 
@@ -160,8 +162,8 @@ func Rotate3DX(angle float32) Matrix3x3 {
 // [cos 0 sin]
 // [0 1 0]
 // [-sin 0 cos]
-func Rotate3DY(angle float32) Matrix3x3 {
-	sin, cos := math32.Sincos(angle)
+func Rotate3DY(angle float64) Matrix3x3 {
+	sin, cos := math.Sincos(angle)
 	return Matrix3x3{cos, 0, -sin, 0, 1, 0, sin, 0, cos}
 }
 
@@ -170,8 +172,8 @@ func Rotate3DY(angle float32) Matrix3x3 {
 // [cos -sin 0]
 // [sin cos 0]
 // [0 0 1]
-func Rotate3DZ(angle float32) Matrix3x3 {
-	sin, cos := math32.Sincos(angle)
+func Rotate3DZ(angle float64) Matrix3x3 {
+	sin, cos := math.Sincos(angle)
 	return Matrix3x3{cos, sin, 0, -sin, cos, 0, 0, 0, 1}
 }
 
@@ -181,10 +183,10 @@ func Rotate3DZ(angle float32) Matrix3x3 {
 // [cos(y)cos(z), -cos(y)sin(z), sin(y)]
 // [cos(x)sin(z)+sin(x)sin(y)cos(z), cos(x)cos(z)-sin(x)sin(y)sin(z), -sin(x)cos(y)]
 // [sin(x)sin(z)-cos(x)sin(y)cos(z), sin(x)cos(z)+cos(x)sin(y)sin(z), cos(x)cos(y)]
-func Rotate3DXYZ(xAngle, yAngle, zAngle float32) Matrix3x3 {
-	sinx, cosx := math32.Sincos(xAngle)
-	siny, cosy := math32.Sincos(yAngle)
-	sinz, cosz := math32.Sincos(zAngle)
+func Rotate3DXYZ(xAngle, yAngle, zAngle float64) Matrix3x3 {
+	sinx, cosx := math.Sincos(xAngle)
+	siny, cosy := math.Sincos(yAngle)
+	sinz, cosz := math.Sincos(zAngle)
 
 	return Matrix3x3FromRows(
 		Vector3{cosy * cosz, -cosy * sinz, siny},
@@ -199,10 +201,10 @@ func Rotate3DXYZ(xAngle, yAngle, zAngle float32) Matrix3x3 {
 // [cos(y)cos(z), -cos(y)sin(z), sin(y)]
 // [sin(x)sin(y)cos(z)+cos(x)sin(z), -sin(x)sin(y)sin(x)+cos(x)cos(z), -sin(x)cos(y)]
 // [-cos(x)sin(y)cos(z)+sin(x)sin(z), cos(x)sin(x)sin(x)+sin(y)cos(z), cos(x)cos(y)]
-func Rotate3DZYX(xAngle, yAngle, zAngle float32) Matrix3x3 {
-	sinx, cosx := math32.Sincos(xAngle)
-	siny, cosy := math32.Sincos(yAngle)
-	sinz, cosz := math32.Sincos(zAngle)
+func Rotate3DZYX(xAngle, yAngle, zAngle float64) Matrix3x3 {
+	sinx, cosx := math.Sincos(xAngle)
+	siny, cosy := math.Sincos(yAngle)
+	sinz, cosz := math.Sincos(zAngle)
 
 	return Matrix3x3FromRows(
 		Vector3{cosy * cosz, -cosy * sinz, siny},

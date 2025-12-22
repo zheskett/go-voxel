@@ -9,7 +9,7 @@ const (
 	// the shared face of two neighbor voxels. This distance offset is used in:
 	// vox = hit_position - hit_normal * VoxelRayDelta
 	// to find the actual voxel the ray hit
-	VoxelRayDelta = 1e-2
+	VoxelRayDelta = 1e-7
 )
 
 // Enum for axis
@@ -25,14 +25,14 @@ const (
 type Ray struct {
 	Origin te.Vector3
 	Dir    te.Vector3
-	Tmax   float32
+	Tmax   float64
 }
 
 // Returned information after a ray is cast into the scene
 type RayHit struct {
 	// TODO: remove like half of these fields -- doesn't make sense to store all this it is just easy
 	Hit      bool
-	Time     float32
+	Time     float64
 	Color    [3]byte
 	IntPos   [3]int
 	Position te.Vector3
@@ -46,14 +46,14 @@ type Marchable interface {
 }
 
 type MarchData struct {
-	Tmin float32
-	Tmax float32
-	Time float32
+	Tmin float64
+	Tmax float64
+	Time float64
 	Inv  te.Vector3
 	Side axis
 }
 
-func MarchDataInit(tmin, tmax float32, ray Ray) MarchData {
+func MarchDataInit(tmin, tmax float64, ray Ray) MarchData {
 	return MarchData{Tmin: tmin, Tmax: tmax, Time: tmin, Inv: ray.Dir.Inv(), Side: none}
 }
 

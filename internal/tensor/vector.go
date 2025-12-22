@@ -1,17 +1,17 @@
 package tensor
 
 import (
-	"github.com/chewxy/math32"
+	"math"
 )
 
 // A 2D Vector
 type Vector2 struct {
-	X, Y float32 // X coordinate
+	X, Y float64 // X coordinate
 }
 
 // A 3D Vector
 type Vector3 struct {
-	X, Y, Z float32 // X coordinate
+	X, Y, Z float64 // X coordinate
 }
 
 // A 3D integer Vector
@@ -22,7 +22,7 @@ type Vector3i struct {
 // Start Vector2 Functions
 
 // Creates a 2D Vector from components
-func Vec2(x, y float32) Vector2 {
+func Vec2(x, y float64) Vector2 {
 	return Vector2{X: x, Y: y}
 }
 
@@ -32,7 +32,7 @@ func Vec2Zero() Vector2 {
 }
 
 // Creates a 2D vector with similar components
-func Vec2Splat(c float32) Vector2 {
+func Vec2Splat(c float64) Vector2 {
 	return Vector2{X: c, Y: c}
 }
 
@@ -47,22 +47,22 @@ func Vec2Y() Vector2 {
 }
 
 // Returns the Elements of the vector
-func (v Vector2) Elms() (float32, float32) {
+func (v Vector2) Elms() (float64, float64) {
 	return v.X, v.Y
 }
 
 // Returns an array of the vector components in order
-func (v Vector2) AsArray() [2]float32 {
-	return [2]float32{v.X, v.Y}
+func (v Vector2) AsArray() [2]float64 {
+	return [2]float64{v.X, v.Y}
 }
 
 // Returns the length of the vector
-func (v Vector2) Len() float32 {
-	return math32.Hypot(v.X, v.Y)
+func (v Vector2) Len() float64 {
+	return math.Hypot(v.X, v.Y)
 }
 
 // Returns the squared length of the vector
-func (v Vector2) LenSqr() float32 {
+func (v Vector2) LenSqr() float64 {
 	return v.X*v.X + v.Y*v.Y
 }
 
@@ -75,7 +75,7 @@ func (v Vector2) Normalized() Vector2 {
 // Returns either the normalized vector or the zero vector if the length is too small
 func (v Vector2) NormalizedOrZero() Vector2 {
 	invLen := 1.0 / v.Len()
-	if math32.IsInf(invLen, 1) {
+	if math.IsInf(invLen, 1) {
 		return Vec2Zero()
 	}
 	return Vector2{v.X * invLen, v.Y * invLen}
@@ -97,18 +97,18 @@ func (v1 Vector2) Sub(v2 Vector2) Vector2 {
 }
 
 // Returns the product of a vector and a scalar
-func (v1 Vector2) Mul(c float32) Vector2 {
+func (v1 Vector2) Mul(c float64) Vector2 {
 	return Vector2{v1.X * c, v1.Y * c}
 }
 
 // Returns the quotient of a vector and a scalar
-func (v1 Vector2) Div(c float32) Vector2 {
+func (v1 Vector2) Div(c float64) Vector2 {
 	invC := 1.0 / c
 	return Vector2{v1.X * invC, v1.Y * invC}
 }
 
 // Returns the dot product of two vectors
-func (v1 Vector2) Dot(v2 Vector2) float32 {
+func (v1 Vector2) Dot(v2 Vector2) float64 {
 	return v1.X*v2.X + v1.Y*v2.Y
 }
 
@@ -122,39 +122,39 @@ func (v1 Vector2) MulComponent(v2 Vector2) Vector2 {
 	return Vector2{v1.X * v2.X, v1.Y * v2.Y}
 }
 
-// Performs a min comparison for all the elements of the vector
-func (v Vector2) ComponentMin(c float32) Vector2 {
-	return Vector2{math32.Min(c, v.X), math32.Min(c, v.Y)}
+// Performs a mimatharison for all the elements of the vector
+func (v Vector2) ComponentMin(c float64) Vector2 {
+	return Vector2{math.Min(c, v.X), math.Min(c, v.Y)}
 }
 
 // Performs a max comparison for all the elements of the vector
-func (v Vector2) ComponentMax(c float32) Vector2 {
-	return Vector2{math32.Max(c, v.X), math32.Max(c, v.Y)}
+func (v Vector2) ComponentMax(c float64) Vector2 {
+	return Vector2{math.Max(c, v.X), math.Max(c, v.Y)}
 }
 
 // Performs a clamp operation on all the components of the vector
-func (v Vector2) ComponentClamp(min, max float32) Vector2 {
+func (v Vector2) ComponentClamp(min, max float64) Vector2 {
 	return v.ComponentMax(min).ComponentMin(max)
 }
 
 // Returns a vector with -1 or +1 corresponding to the sign of each component
 func (v Vector2) SignVec() Vector2 {
-	return Vector2{math32.Copysign(1, v.X), math32.Copysign(1, v.Y)}
+	return Vector2{math.Copysign(1, v.X), math.Copysign(1, v.Y)}
 }
 
 // Returns the max component of a 2D vector
-func (v Vector2) Max() float32 {
+func (v Vector2) Max() float64 {
 	return max(v.X, v.Y)
 }
 
 // Returns the min component of a 2D vector
-func (v Vector2) Min() float32 {
+func (v Vector2) Min() float64 {
 	return min(v.X, v.Y)
 }
 
 // Returns the absolute value of a 2D vector
 func (v Vector2) Abs() Vector2 {
-	return Vector2{math32.Abs(v.X), math32.Abs(v.Y)}
+	return Vector2{math.Abs(v.X), math.Abs(v.Y)}
 }
 
 // Returns the inverse of a 2D vector
@@ -167,7 +167,7 @@ func (v Vector2) Inv() Vector2 {
 // Start Vector3 Functions
 
 // Creates a 3D Vector from components
-func Vec3(x, y, z float32) Vector3 {
+func Vec3(x, y, z float64) Vector3 {
 	return Vector3{X: x, Y: y, Z: z}
 }
 
@@ -177,7 +177,7 @@ func Vec3Zero() Vector3 {
 }
 
 // Creates a 3D vector with similar components
-func Vec3Splat(c float32) Vector3 {
+func Vec3Splat(c float64) Vector3 {
 	return Vector3{X: c, Y: c, Z: c}
 }
 
@@ -197,22 +197,22 @@ func Vec3Z() Vector3 {
 }
 
 // Returns the Elements of the vector
-func (v Vector3) Elms() (float32, float32, float32) {
+func (v Vector3) Elms() (float64, float64, float64) {
 	return v.X, v.Y, v.Z
 }
 
 // Returns an array of the vector components in order
-func (v Vector3) AsArray() [3]float32 {
-	return [3]float32{v.X, v.Y, v.Z}
+func (v Vector3) AsArray() [3]float64 {
+	return [3]float64{v.X, v.Y, v.Z}
 }
 
 // Returns the length of the vector
-func (v Vector3) Len() float32 {
-	return math32.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
+func (v Vector3) Len() float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
 }
 
 // Returns the squared length of the vector
-func (v Vector3) LenSqr() float32 {
+func (v Vector3) LenSqr() float64 {
 	return v.X*v.X + v.Y*v.Y + v.Z*v.Z
 }
 
@@ -225,7 +225,7 @@ func (v Vector3) Normalized() Vector3 {
 // Returns either the normalized vector or the zero vector if the length is too small
 func (v Vector3) NormalizedOrZero() Vector3 {
 	invLen := 1.0 / v.Len()
-	if math32.IsInf(invLen, 1) {
+	if math.IsInf(invLen, 1) {
 		return Vec3Zero()
 	}
 	return Vector3{v.X * invLen, v.Y * invLen, v.Z * invLen}
@@ -247,18 +247,18 @@ func (v1 Vector3) Sub(v2 Vector3) Vector3 {
 }
 
 // Returns the product of a vector and a scalar
-func (v1 Vector3) Mul(c float32) Vector3 {
+func (v1 Vector3) Mul(c float64) Vector3 {
 	return Vector3{v1.X * c, v1.Y * c, v1.Z * c}
 }
 
 // Returns the quotient of a vector and a scalar
-func (v1 Vector3) Div(c float32) Vector3 {
+func (v1 Vector3) Div(c float64) Vector3 {
 	invC := 1.0 / c
 	return Vector3{v1.X * invC, v1.Y * invC, v1.Z * invC}
 }
 
 // Returns the dot product of two vectors
-func (v1 Vector3) Dot(v2 Vector3) float32 {
+func (v1 Vector3) Dot(v2 Vector3) float64 {
 	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z
 }
 
@@ -277,38 +277,38 @@ func (v1 Vector3) MulComponent(v2 Vector3) Vector3 {
 }
 
 // Performs a min comparison for all the elements of the vector
-func (v Vector3) ComponentMin(c float32) Vector3 {
-	return Vector3{math32.Min(c, v.X), math32.Min(c, v.Y), math32.Min(c, v.Z)}
+func (v Vector3) ComponentMin(c float64) Vector3 {
+	return Vector3{math.Min(c, v.X), math.Min(c, v.Y), math.Min(c, v.Z)}
 }
 
 // Performs a max comparison for all the elements of the vector
-func (v Vector3) ComponentMax(c float32) Vector3 {
-	return Vector3{math32.Max(c, v.X), math32.Max(c, v.Y), math32.Max(c, v.Z)}
+func (v Vector3) ComponentMax(c float64) Vector3 {
+	return Vector3{math.Max(c, v.X), math.Max(c, v.Y), math.Max(c, v.Z)}
 }
 
 // Performs a clamp operation on all the components of the vector
-func (v Vector3) ComponentClamp(min, max float32) Vector3 {
+func (v Vector3) ComponentClamp(min, max float64) Vector3 {
 	return v.ComponentMax(min).ComponentMin(max)
 }
 
 // Returns a vector with -1 or +1 corresponding to the sign of each component
 func (v Vector3) SignVec() Vector3 {
-	return Vector3{math32.Copysign(1, v.X), math32.Copysign(1, v.Y), math32.Copysign(1, v.Z)}
+	return Vector3{math.Copysign(1, v.X), math.Copysign(1, v.Y), math.Copysign(1, v.Z)}
 }
 
 // Returns the max component of a 3D vector
-func (v Vector3) Max() float32 {
+func (v Vector3) Max() float64 {
 	return max(v.X, v.Y, v.Z)
 }
 
 // Returns the min component of a 3D vector
-func (v Vector3) Min() float32 {
+func (v Vector3) Min() float64 {
 	return min(v.X, v.Y, v.Z)
 }
 
 // Returns the absolute value of a 3D vector
 func (v Vector3) Abs() Vector3 {
-	return Vector3{math32.Abs(v.X), math32.Abs(v.Y), math32.Abs(v.Z)}
+	return Vector3{math.Abs(v.X), math.Abs(v.Y), math.Abs(v.Z)}
 }
 
 // Returns the inverse of a 3D vector
@@ -360,9 +360,9 @@ func (v1 Vector3i) AsArray() [3]int {
 	return [3]int{v1.X, v1.Y, v1.Z}
 }
 
-// Returns the float32 equivalent vector
+// Returns the float64 equivalent vector
 func (v1 Vector3i) AsVec3f() Vector3 {
-	return Vec3(float32(v1.X), float32(v1.Y), float32(v1.Z))
+	return Vec3(float64(v1.X), float64(v1.Y), float64(v1.Z))
 }
 
 // Returns the negative of the vector

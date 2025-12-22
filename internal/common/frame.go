@@ -11,7 +11,7 @@ import (
 // FrameData allows camera movements to be made independent of FPS for a smoother movements
 type FrameData struct {
 	Tick     uint
-	Deltat   float32
+	Deltat   float64
 	Previous time.Time
 
 	Keys  map[glfw.Key]bool
@@ -23,13 +23,13 @@ func FrameDataInit() FrameData {
 }
 
 func (data *FrameData) Update() {
-	data.Deltat = float32(time.Since(data.Previous).Seconds())
+	data.Deltat = float64(time.Since(data.Previous).Seconds())
 	data.Previous = time.Now()
 	data.Tick += 1
 }
 
-func (data *FrameData) GetMouseDelta(mxc, myc float64) (float32, float32) {
-	mx, my := float32(mxc), float32(myc)
+func (data *FrameData) GetMouseDelta(mxc, myc float64) (float64, float64) {
+	mx, my := float64(mxc), float64(myc)
 	dx, dy := data.mouse.X-mx, data.mouse.Y-my
 	data.mouse = tensor.Vec2(mx, my)
 	return dx, dy

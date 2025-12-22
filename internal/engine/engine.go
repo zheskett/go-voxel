@@ -61,7 +61,7 @@ func (eng *Engine) SetCallbacks() {
 
 func (eng *Engine) SetScrollCallback() {
 	eng.Window.SetScrollCallback(func(_ *glfw.Window, _ float64, yoff float64) {
-		eng.Camera.Movespeed = max(eng.Camera.Movespeed+float32(yoff)*moveSpeedInc, 0)
+		eng.Camera.Movespeed = max(eng.Camera.Movespeed+float64(yoff)*moveSpeedInc, 0)
 	})
 }
 

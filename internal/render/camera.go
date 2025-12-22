@@ -1,10 +1,10 @@
 package render
 
 import (
+	"math"
 	"runtime"
 	"sync"
 
-	"github.com/chewxy/math32"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/zheskett/go-voxel/internal/common"
 	te "github.com/zheskett/go-voxel/internal/tensor"
@@ -16,13 +16,13 @@ type CameraRayBasis struct {
 	drdx te.Vector3
 	dudy te.Vector3
 
-	halfwidth  float32
-	halfheight float32
+	halfwidth  float64
+	halfheight float64
 }
 
 func CameraRayBasisInit(cam *Camera, pix *ColorBuffer) CameraRayBasis {
-	scale := math32.Tan(cam.Fov * math32.Pi / 360.0)
-	hh, hw := float32(pix.Height/2), float32(pix.Width/2)
+	scale := math.Tan(cam.Fov * math.Pi / 360.0)
+	hh, hw := float64(pix.Height/2), float64(pix.Width/2)
 
 	dcamrdx := cam.Rvec.Mul(scale * cam.Aspect)
 	dcamudy := cam.Uvec.Mul(scale)
@@ -31,8 +31,8 @@ func CameraRayBasisInit(cam *Camera, pix *ColorBuffer) CameraRayBasis {
 }
 
 type Camera struct {
-	Pitch float32
-	Yaw   float32
+	Pitch float64
+	Yaw   float64
 
 	Fvec   te.Vector3
 	Rvec   te.Vector3
@@ -40,18 +40,18 @@ type Camera struct {
 	Wupvec te.Vector3
 	Pos    te.Vector3
 
-	Lookspeed float32
-	Movespeed float32
+	Lookspeed float64
+	Movespeed float64
 
-	Fov            float32
-	Aspect         float32
-	RenderDistance float32
+	Fov            float64
+	Aspect         float64
+	RenderDistance float64
 }
 
 func CameraInit() Camera {
 	return Camera{
 		Yaw:   0.0,
-		Pitch: math32.Pi / 4.0,
+		Pitch: math.Pi / 4.0,
 
 		Fvec:   te.Vec3Z(),
 		Rvec:   te.Vec3X(),
@@ -60,12 +60,12 @@ func CameraInit() Camera {
 	}
 }
 
-func (cam *Camera) UpdateRotation(pitch, yaw float32) {
+func (cam *Camera) UpdateRotation(pitch, yaw float64) {
 	cam.Pitch += pitch * cam.Lookspeed
 	cam.Yaw += yaw * cam.Lookspeed
-	// Confine pitch and yaw
-	cam.Pitch = math32.Min(math32.Max(cam.Pitch, -math32.Pi/2*0.99), math32.Pi/2*0.99)
-	cam.Yaw = math32.Mod(cam.Yaw, 2.0*math32.Pi)
+	// Confine pmathnd yaw
+	cam.Pitch = math.Min(math.Max(cam.Pitch, -math.Pi/2*0.99), math.Pi/2*0.99)
+	cam.Yaw = math.Mod(cam.Yaw, 2.0*math.Pi)
 
 	front := te.Rotate3DY(cam.Yaw).Mul(te.Rotate3DX(cam.Pitch)).MulVec(te.Vec3Z())
 	right := front.Cross(cam.Wupvec)
@@ -76,7 +76,7 @@ func (cam *Camera) UpdateRotation(pitch, yaw float32) {
 	cam.Uvec = up.Normalized()
 }
 
-func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *common.FrameData) {
+func (cam *Camera) UpdatePosition(dx, dy, dz float64, frame *common.FrameData) {
 	dx, dy, dz = te.Vec3(dx, dy, dz).NormalizedOrZero().Mul(cam.Movespeed * frame.Deltat).Elms()
 	clampedfront := te.Vec3(cam.Fvec.X, 0, cam.Fvec.Z).Normalized()
 	forward := clampedfront.Mul(dz)
@@ -86,7 +86,7 @@ func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *common.FrameData) {
 }
 
 func (cam *Camera) getPixelRay(column int, row int, basis CameraRayBasis) vxl.Ray {
-	dx, dy := float32(column)+0.5, float32(row)+0.5
+	dx, dy := float64(column)+0.5, float64(row)+0.5
 
 	ndcx := (dx - basis.halfwidth) / basis.halfwidth
 	ndcy := -(dy - basis.halfheight) / basis.halfheight
@@ -119,7 +119,7 @@ func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *ColorBuffer, tick ui
 
 					hit := vtree.Voxels.MarchRay(ray)
 					if hit.Hit {
-						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
+						color := te.Vec3(float64(hit.Color[0]), float64(hit.Color[1]), float64(hit.Color[2]))
 
 						shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
 
@@ -153,5 +153,5 @@ func (cam *Camera) UpdateCamInput(frame *common.FrameData) {
 	if frame.Keys[glfw.KeyLeftShift] {
 		ty++
 	}
-	cam.UpdatePosition(float32(tx), float32(ty), float32(tz), frame)
+	cam.UpdatePosition(float64(tx), float64(ty), float64(tz), frame)
 }

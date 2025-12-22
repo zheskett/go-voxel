@@ -2,14 +2,15 @@ package voxel
 
 import (
 	"fmt"
+	"math"
 	"runtime"
 	"sync"
 
-	"github.com/chewxy/math32"
+	clr "image/color"
+
 	"github.com/zheskett/go-voxel/internal/parser"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 	"github.com/zheskett/go-voxel/pkg/voxparse"
-	clr "image/color"
 )
 
 type VoxelObj struct {
@@ -22,7 +23,7 @@ type VoxelObj struct {
 type ConnectivityDistance int
 type plane struct {
 	normVec te.Vector3
-	d       float32
+	d       float64
 }
 
 const (
@@ -113,7 +114,7 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 	if resolution < 1 {
 		return VoxelObj{}, fmt.Errorf("Invalid Resolution: %v", resolution)
 	}
-	vLen := 2.0 / float32(resolution) // L: goes from -1 to 1
+	vLen := 2.0 / float64(resolution) // L: goes from -1 to 1
 	if cd != T26 && cd != T6 {
 		return VoxelObj{}, fmt.Errorf("Invalid Connectivity Distance: %v", cd)
 	}
@@ -121,13 +122,13 @@ func Voxelize(obj parser.Obj, cd ConnectivityDistance, resolution int, color [3]
 	// R_c
 	boundRad := vLen / 2.0
 	if cd == T26 {
-		boundRad *= math32.Sqrt(3.0)
+		boundRad *= math.Sqrt(3.0)
 	}
 
 	// Calculate X, Y, Z
-	X := int16(math32.Ceil(float32(resolution) * obj.MaxVertsPos.X))
-	Y := int16(math32.Ceil(float32(resolution) * obj.MaxVertsPos.Y))
-	Z := int16(math32.Ceil(float32(resolution) * obj.MaxVertsPos.Z))
+	X := int16(math.Ceil(float64(resolution) * obj.MaxVertsPos.X))
+	Y := int16(math.Ceil(float64(resolution) * obj.MaxVertsPos.Y))
+	Z := int16(math.Ceil(float64(resolution) * obj.MaxVertsPos.Z))
 
 	imgColor := clr.RGBA{color[0], color[1], color[2], 0xff}
 	vObj := VoxelObj{X, Y, Z, make(map[[3]int16]byte), voxparse.VoxPalette{clr.RGBA{0, 0, 0, 0}, imgColor}}
@@ -187,7 +188,7 @@ func (vObj *VoxelObj) Squash() {
 	vObj.Voxels = newVoxels
 }
 
-func calcVertSet(setChan chan<- [][3]int16, obj parser.Obj, boundRad float32, vLen float32, X, Y, Z int16) {
+func calcVertSet(setChan chan<- [][3]int16, obj parser.Obj, boundRad float64, vLen float64, X, Y, Z int16) {
 	// All voxels whose voxel centers fall inside R_c are added to S_v
 	found := [][3]int16{}
 	for _, v := range obj.Vertices {
@@ -206,7 +207,7 @@ func calcVertSet(setChan chan<- [][3]int16, obj parser.Obj, boundRad float32, vL
 	setChan <- found
 }
 
-func calcEdgeSet(setChan chan<- [][3]int16, obj parser.Obj, boundRad, vLen float32, X, Y, Z int16) {
+func calcEdgeSet(setChan chan<- [][3]int16, obj parser.Obj, boundRad, vLen float64, X, Y, Z int16) {
 	// All voxels whose voxel center fall inside a cylinder with radius R_c
 	// and length L, where L is the length of the edge, are added to S_e
 	found := [][3]int16{}
@@ -232,10 +233,10 @@ func calcEdgeSet(setChan chan<- [][3]int16, obj parser.Obj, boundRad, vLen float
 	setChan <- found
 }
 
-func calcBodySet(setChan chan<- [][3]int16, obj parser.Obj, cd ConnectivityDistance, vLen float32, X, Y, Z int16) {
+func calcBodySet(setChan chan<- [][3]int16, obj parser.Obj, cd ConnectivityDistance, vLen float64, X, Y, Z int16) {
 	// All voxels who are inside planes G and H and inside edge planes E1 - E3 are added to S_f
-	invSqrt3 := 1.0 / math32.Sqrt(3.0)
-	sqrt3 := math32.Sqrt(3.0)
+	invSqrt3 := 1.0 / math.Sqrt(3.0)
+	sqrt3 := math.Sqrt(3.0)
 	var wg sync.WaitGroup
 	faceChan := make(chan [3]int, cpus)
 	for range cpus {
@@ -255,15 +256,15 @@ func calcBodySet(setChan chan<- [][3]int16, obj parser.Obj, cd ConnectivityDista
 				e3.normVec = facePlane.normVec.Cross(v1.Sub(v3)).Normalized()
 				e3.d = e3.normVec.Dot(v3) * -1
 
-				cosBeta := max(math32.Abs(facePlane.normVec.X), math32.Abs(facePlane.normVec.Y), math32.Abs(facePlane.normVec.Z))
+				cosBeta := max(math.Abs(facePlane.normVec.X), math.Abs(facePlane.normVec.Y), math.Abs(facePlane.normVec.Z))
 				t := vLen * 0.5 * cosBeta
 				if cd == T26 {
 					// Find closest diagonal cos
-					cosAlpha := float32(0.0)
+					cosAlpha := float64(0.0)
 					for i := -1; i <= 1; i += 2 {
 						for j := -1; j <= 1; j += 2 {
 							for k := -1; k <= 1; k += 2 {
-								diagVec := te.Vec3(float32(i), float32(j), float32(k)).Mul(invSqrt3)
+								diagVec := te.Vec3(float64(i), float64(j), float64(k)).Mul(invSqrt3)
 								cosAlpha = max(cosAlpha, facePlane.normVec.Dot(diagVec))
 							}
 						}
@@ -302,22 +303,22 @@ func calcBodySet(setChan chan<- [][3]int16, obj parser.Obj, cd ConnectivityDista
 }
 
 // Get closest idx of a voxel to a point
-func idxPos(v te.Vector3, X, Y, Z int16, vLen float32) (int16, int16, int16) {
+func idxPos(v te.Vector3, X, Y, Z int16, vLen float64) (int16, int16, int16) {
 	vLenInv := 1.0 / vLen
-	xPos := v.X*vLenInv + float32(X-1)*0.5
-	yPos := v.Y*vLenInv + float32(Y-1)*0.5
-	zPos := v.Z*vLenInv + float32(Z-1)*0.5
-	x := int16(math32.Round(xPos))
-	y := int16(math32.Round(yPos))
-	z := int16(math32.Round(zPos))
+	xPos := v.X*vLenInv + float64(X-1)*0.5
+	yPos := v.Y*vLenInv + float64(Y-1)*0.5
+	zPos := v.Z*vLenInv + float64(Z-1)*0.5
+	x := int16(math.Round(xPos))
+	y := int16(math.Round(yPos))
+	z := int16(math.Round(zPos))
 
 	return x, y, z
 }
 
-func toPos(x, y, z int16, vLen float32, X, Y, Z int16) te.Vector3 {
-	xPos := (float32(x) - float32(X-1)*0.5) * vLen
-	yPos := (float32(y) - float32(Y-1)*0.5) * vLen
-	zPos := (float32(z) - float32(Z-1)*0.5) * vLen
+func toPos(x, y, z int16, vLen float64, X, Y, Z int16) te.Vector3 {
+	xPos := (float64(x) - float64(X-1)*0.5) * vLen
+	yPos := (float64(y) - float64(Y-1)*0.5) * vLen
+	zPos := (float64(z) - float64(Z-1)*0.5) * vLen
 	return te.Vec3(xPos, yPos, zPos)
 }
 
@@ -325,7 +326,7 @@ func surrounds(x, y, z int16, X, Y, Z int16) bool {
 	return x < X && y < Y && z < Z && x >= 0 && y >= 0 && z >= 0
 }
 
-func insideSphere(x, y, z int16, radius float32, center te.Vector3, X, Y, Z int16, vLen float32) bool {
+func insideSphere(x, y, z int16, radius float64, center te.Vector3, X, Y, Z int16, vLen float64) bool {
 	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
@@ -334,7 +335,7 @@ func insideSphere(x, y, z int16, radius float32, center te.Vector3, X, Y, Z int1
 	return vPos.Sub(center).LenSqr() <= radius*radius
 }
 
-func insideCylinder(x, y, z int16, radius float32, a, b te.Vector3, X, Y, Z int16, vLen float32) bool {
+func insideCylinder(x, y, z int16, radius float64, a, b te.Vector3, X, Y, Z int16, vLen float64) bool {
 	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
@@ -346,7 +347,7 @@ func insideCylinder(x, y, z int16, radius float32, a, b te.Vector3, X, Y, Z int1
 		vPos.Sub(a).Cross(e).LenSqr() <= radius*radius*e.LenSqr()
 }
 
-func betweenPlanes(x, y, z int16, facePlane plane, t float32, X, Y, Z int16, vLen float32) bool {
+func betweenPlanes(x, y, z int16, facePlane plane, t float64, X, Y, Z int16, vLen float64) bool {
 	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}
@@ -356,7 +357,7 @@ func betweenPlanes(x, y, z int16, facePlane plane, t float32, X, Y, Z int16, vLe
 	return -t <= distance && distance <= t
 }
 
-func insidePlaneTriangle(x, y, z int16, e1, e2, e3 plane, X, Y, Z int16, vLen float32) bool {
+func insidePlaneTriangle(x, y, z int16, e1, e2, e3 plane, X, Y, Z int16, vLen float64) bool {
 	if !surrounds(x, y, z, X, Y, Z) {
 		return false
 	}

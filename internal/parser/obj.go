@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/chewxy/math32"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -44,8 +44,8 @@ func ParseObj(path string, flipX, flipY, flipZ bool) (Obj, error) {
 
 	scanner := bufio.NewScanner(file)
 	lineNum := 1
-	maxVertsPos := te.Vec3Splat(math32.Inf(-1))
-	minVertsPos := te.Vec3Splat(math32.Inf(1))
+	maxVertsPos := te.Vec3Splat(math.Inf(-1))
+	minVertsPos := te.Vec3Splat(math.Inf(1))
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
@@ -118,7 +118,7 @@ func parseVertex(line string) (te.Vector3, error) {
 	if err != nil {
 		return vertex, errors.New("Failed to parse vertex z pos")
 	}
-	vertex = te.Vec3(float32(x), float32(y), float32(z))
+	vertex = te.Vec3(float64(x), float64(y), float64(z))
 
 	return vertex, nil
 }

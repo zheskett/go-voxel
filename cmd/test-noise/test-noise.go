@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	noise, err := noise.GenPerlin3D(256)
+	noise, err := noise.GenPerlin3D(512)
 	if err != nil {
 		panic(err)
 	}

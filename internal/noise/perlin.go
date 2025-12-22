@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"image/color"
 	"image/png"
+	"math"
 	"math/rand"
 	"os"
 
 	"image"
 
-	"github.com/chewxy/math32"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 )
 
@@ -35,10 +35,10 @@ func GenPerlin3D(TextureSize int) (Perlin3D, error) {
 }
 
 // Sample returns the noise value at the given position
-func (perlin *Perlin3D) Sample(vec te.Vector3) float32 {
+func (perlin *Perlin3D) Sample(vec te.Vector3) float64 {
 	tm1 := perlin.TextureSize - 1
 	xCube, yCube, zCube := int(vec.X)&tm1, int(vec.Y)&tm1, int(vec.Z)&tm1
-	x, y, z := vec.X-float32(int(vec.X)), vec.Y-float32(int(vec.Y)), vec.Z-float32(int(vec.Z))
+	x, y, z := vec.X-float64(int(vec.X)), vec.Y-float64(int(vec.Y)), vec.Z-float64(int(vec.Z))
 	p := perlin.perm
 	aaa, aab := p[p[p[xCube]+yCube]+zCube], p[p[p[xCube]+yCube]+zCube+1]
 	aba, abb := p[p[p[xCube]+yCube+1]+zCube], p[p[p[xCube]+yCube+1]+zCube+1]
@@ -57,9 +57,9 @@ func (perlin *Perlin3D) Sample(vec te.Vector3) float32 {
 // FBM samples Fractional Brownian Motion at x,y,z
 //
 // https://iquilezles.org/articles/fbm/
-func (perlin *Perlin3D) FBM(vec te.Vector3, octaves int, H float32) float32 {
-	G := math32.Exp2(-H)
-	var freq, amp, total, maxVal float32 = 1.0, 1.0, 0.0, 0.0
+func (perlin *Perlin3D) FBM(vec te.Vector3, octaves int, H float64) float64 {
+	G := math.Exp2(-H)
+	var freq, amp, total, maxVal float64 = 1.0, 1.0, 0.0, 0.0
 	for range octaves {
 		total += amp * perlin.Sample(vec.Mul(freq))
 		maxVal += amp
@@ -71,12 +71,12 @@ func (perlin *Perlin3D) FBM(vec te.Vector3, octaves int, H float32) float32 {
 }
 
 // Draw an image of the noise
-func (perlin *Perlin3D) Draw(path string, pixels int, z float32, stepSize float32) error {
+func (perlin *Perlin3D) Draw(path string, pixels int, z float64, stepSize float64) error {
 	pic := image.NewGray(image.Rect(0, 0, pixels, pixels))
 	for i := range pic.Bounds().Dx() {
 		for j := range pic.Bounds().Dy() {
-			sample := perlin.Sample(te.Vec3(float32(i)*stepSize, float32(j)*stepSize, z))
-			pic.SetGray(i, j, color.Gray{uint8(math32.Round(sample * 255))})
+			sample := perlin.Sample(te.Vec3(float64(i)*stepSize, float64(j)*stepSize, z))
+			pic.SetGray(i, j, color.Gray{uint8(math.Round(sample * 255))})
 		}
 	}
 
@@ -94,12 +94,12 @@ func (perlin *Perlin3D) Draw(path string, pixels int, z float32, stepSize float3
 }
 
 // Draw an image of the FBM noise
-func (perlin *Perlin3D) DrawFBM(path string, pixels int, z float32, octaves int, H, stepSize float32) error {
+func (perlin *Perlin3D) DrawFBM(path string, pixels int, z float64, octaves int, H, stepSize float64) error {
 	pic := image.NewGray(image.Rect(0, 0, pixels, pixels))
 	for i := range pic.Bounds().Dx() {
 		for j := range pic.Bounds().Dy() {
-			sample := perlin.FBM(te.Vec3(float32(i)*stepSize, float32(j)*stepSize, z), octaves, H)
-			pic.SetGray(i, j, color.Gray{uint8(math32.Round(sample * 255))})
+			sample := perlin.FBM(te.Vec3(float64(i)*stepSize, float64(j)*stepSize, z), octaves, H)
+			pic.SetGray(i, j, color.Gray{uint8(math.Round(sample * 255))})
 		}
 	}
 
@@ -117,8 +117,8 @@ func (perlin *Perlin3D) DrawFBM(path string, pixels int, z float32, octaves int,
 }
 
 // Gradient, dot product between gradient vector and relative position
-func grad(hash int, x, y, z float32) float32 {
-	var res float32
+func grad(hash int, x, y, z float64) float64 {
+	var res float64
 	switch hash & 0xF {
 	case 0x0:
 		res = x + y
@@ -156,16 +156,16 @@ func grad(hash int, x, y, z float32) float32 {
 	return res
 }
 
-func lerp(a, b, t float32) float32 {
+func lerp(a, b, t float64) float64 {
 	return a + t*(b-a)
 }
 
 // 6t^5 - 15t^4 + 10t^3
-func fade(t float32) float32 {
+func fade(t float64) float64 {
 	return t * t * t * (t*(t*6-15) + 10)
 }
 
 // CuRat is the Cubic Ration Smoothstep function for values 0-1.
-func CuRat(t float32) float32 {
+func CuRat(t float64) float64 {
 	return t * t * t / (3.0*t*t - 3.0*t + 1.0)
 }
