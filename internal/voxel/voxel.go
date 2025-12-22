@@ -17,6 +17,27 @@ type DirLight struct {
 	Col te.Vector3 // Can NOT have mag > 1 for directional light
 }
 
+// The same as 'CachedLighting' but with a tick that it was set
+type VoxelLighting struct {
+	Light te.Vector3
+	Dir   te.Vector3
+	Tick  uint
+}
+
+func VoxelLightingInit() VoxelLighting {
+	return VoxelLighting{Light: te.Vec3Zero(), Dir: te.Vec3Zero(), Tick: 0}
+}
+
+type Voxel struct {
+	Present bool
+	Color   [3]byte
+	Light   VoxelLighting
+}
+
+func VoxelInit() Voxel {
+	return Voxel{Present: false, Light: VoxelLightingInit()}
+}
+
 // Manager type for the state of the voxels
 type VoxelWorld struct {
 	X, Y, Z int
@@ -26,7 +47,7 @@ type VoxelWorld struct {
 }
 
 func VoxelWorldInit(size int) VoxelWorld {
-	return VoxelWorld{Voxels: OctreeInit(size), Lights: make([]PointLight, 0)}
+	return VoxelWorld{Voxels: OctreeInit(size), Lights: make([]PointLight, 0), X: size, Y: size, Z: size}
 }
 
 func (vox *VoxelWorld) SetVoxel(x, y, z int, r, g, b byte) {
@@ -73,4 +94,3 @@ func (vox *VoxelWorld) UpdateInputs(window *glfw.Window, pos te.Vector3, dir te.
 		}
 	}
 }
-

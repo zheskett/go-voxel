@@ -153,27 +153,6 @@ func (box *Box) GetHitNormal(ray Ray) te.Vector3 {
 	return normal
 }
 
-// The same as 'CachedLighting' but with a tick that it was set
-type VoxelLighting struct {
-	Light te.Vector3
-	Dir   te.Vector3
-	Tick  uint
-}
-
-func VoxelLightingInit() VoxelLighting {
-	return VoxelLighting{Light: te.Vec3Zero(), Dir: te.Vec3Zero(), Tick: 0}
-}
-
-type Voxel struct {
-	Present bool
-	Color   [3]byte
-	Light   VoxelLighting
-}
-
-func VoxelInit() Voxel {
-	return Voxel{Present: false, Light: VoxelLightingInit()}
-}
-
 // Doubly linked octant node
 type TreeNode struct {
 	Box    Box
@@ -273,7 +252,7 @@ func OctreeInit(size int) Octree {
 	// to allow for direct translation from the array storage without coordinate system
 	// transformations
 	if !isPowerOfTwo(size) {
-		panic("voxel octree must have power of two dimensions currently")
+		panic("Voxel octree must have power of two dimensions currently")
 	}
 	return Octree{*TreeNodeInit(BoxInit(0, 0, 0, size), nil)} // Root has no stem
 }
@@ -319,7 +298,7 @@ func (tw *TreeWalker) Ascend() {
 	tw.level -= 1
 
 	if tw.level < 0 {
-		panic("error ascending tree")
+		panic("Error ascending tree")
 	}
 }
 
@@ -329,7 +308,7 @@ func (tw *TreeWalker) Descend(index int) {
 	tw.level += 1
 
 	if tw.level > 32 {
-		panic("error descending tree")
+		panic("Error descending tree")
 	}
 }
 

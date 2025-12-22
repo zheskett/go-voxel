@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"runtime/pprof"
 
@@ -18,7 +19,6 @@ func main() {
 	}
 	defer file.Close()
 
-	tree := voxel.OctreeInit(4096)
 	cam := render.CameraInit()
 	cam.Lookspeed = 0.005
 	cam.Fov = 90
@@ -27,8 +27,11 @@ func main() {
 	cam.Pos = tensor.Vec3Splat(256)
 	engine := engine.Engine{}
 	engine.Camera = cam
-	engine.Voxels = voxel.VoxelWorld{Voxels: tree, Sun: voxel.DirLight{}, Lights: make([]voxel.PointLight, 0)}
-	engine.Renderer = &render.RenderManager{Pixels: render.PixelsInit(400, 300)}
+	engine.Voxels = voxel.VoxelWorldInit(4096)
+	engine.Renderer = &render.RenderManager{
+		Pixels: render.PixelsInit(400, 300),
+		Color:  render.ColorBufferInit(400, 300),
+	}
 	scenes.VoxelDebugSceneTrees(&engine.Voxels)
 
 	pprof.StartCPUProfile(file)
@@ -36,7 +39,11 @@ func main() {
 
 	for range 1000 {
 		engine.Camera.RenderVoxels(&engine.Voxels, &engine.Renderer.Color, engine.Framedata.Tick)
+		engine.Renderer.Color.CorrectGamma()
+		engine.Renderer.LoadPixels()
 		engine.Renderer.Pixels.Dither()
-		engine.Camera.UpdateRotation(1, 1)
+		engine.Camera.UpdateRotation(1, 1) // Nudge the camera around so the dynamic lighting has to do some work
 	}
+
+	fmt.Println("Tree testing done.")
 }

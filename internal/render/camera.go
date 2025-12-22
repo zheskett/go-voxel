@@ -6,6 +6,7 @@ import (
 
 	"github.com/chewxy/math32"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/zheskett/go-voxel/internal/common"
 	te "github.com/zheskett/go-voxel/internal/tensor"
 	vxl "github.com/zheskett/go-voxel/internal/voxel"
 )
@@ -75,7 +76,7 @@ func (cam *Camera) UpdateRotation(pitch, yaw float32) {
 	cam.Uvec = up.Normalized()
 }
 
-func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *FrameData) {
+func (cam *Camera) UpdatePosition(dx, dy, dz float32, frame *common.FrameData) {
 	dx, dy, dz = te.Vec3(dx, dy, dz).NormalizedOrZero().Mul(cam.Movespeed * frame.Deltat).Elms()
 	clampedfront := te.Vec3(cam.Fvec.X, 0, cam.Fvec.Z).Normalized()
 	forward := clampedfront.Mul(dz)
@@ -120,9 +121,7 @@ func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *ColorBuffer, tick ui
 					if hit.Hit {
 						color := te.Vec3(float32(hit.Color[0]), float32(hit.Color[1]), float32(hit.Color[2]))
 
-						// shadedintensity := GetPixelShading(vtree, hit, cam.RenderDistance)
 						shadedintensity := GetVoxelShading(vtree, hit, cam.RenderDistance, tick)
-						// shadedintensity := te.Vec3Splat(0.8)
 
 						shadedcolor := shadedintensity.ComponentMax(MinLuminosity).MulComponent(color)
 						pix.SetColor(col, row, shadedcolor)
@@ -134,7 +133,7 @@ func (cam *Camera) RenderVoxels(vtree *vxl.VoxelWorld, pix *ColorBuffer, tick ui
 	threads.Wait()
 }
 
-func (cam *Camera) UpdateCamInput(frame *FrameData) {
+func (cam *Camera) UpdateCamInput(frame *common.FrameData) {
 	tx, ty, tz := 0, 0, 0
 	if frame.Keys[glfw.KeyW] {
 		tz++

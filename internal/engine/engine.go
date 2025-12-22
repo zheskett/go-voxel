@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/zheskett/go-voxel/internal/common"
 	"github.com/zheskett/go-voxel/internal/render"
 	"github.com/zheskett/go-voxel/internal/tensor"
 	"github.com/zheskett/go-voxel/internal/voxel"
@@ -18,7 +19,7 @@ type Engine struct {
 	Window    *glfw.Window
 	Camera    render.Camera
 	Voxels    voxel.VoxelWorld
-	Framedata render.FrameData
+	Framedata common.FrameData
 }
 
 func (eng *Engine) UpdateInputs() {
@@ -28,6 +29,9 @@ func (eng *Engine) UpdateInputs() {
 	eng.Voxels.UpdateInputs(eng.Window, eng.Camera.Pos, eng.Camera.Fvec)
 }
 
+// TODO: This one got a lot more complicated and it is kind of slow. This should
+// honestly be done in a compute shader as a lot of this is purely aesthetic
+// post-processing
 func (eng *Engine) UpdateRender() {
 	// Clear background
 	eng.Renderer.Color.FillColor(
@@ -37,11 +41,16 @@ func (eng *Engine) UpdateRender() {
 			render.BackgroundBlue,
 		),
 	)
-	eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Color, eng.Framedata.Tick) // Render into Color-buffer
-	eng.Renderer.Color.CorrectGamma()                                             // Apply gamma correction
-	eng.Renderer.LoadPixels()                                                     // Convert to RGBA byte
-	eng.Renderer.Pixels.Dither()                                                  // Dither applied to byte-buffer
-	eng.Renderer.Render(eng.Window)                                               // Blit to screen frame-buffer
+	// Render into Color-buffer
+	eng.Camera.RenderVoxels(&eng.Voxels, &eng.Renderer.Color, eng.Framedata.Tick)
+	// Apply gamma correction
+	eng.Renderer.Color.CorrectGamma()
+	// Convert to RGBA byte
+	eng.Renderer.LoadPixels()
+	// Dither applied to byte-buffer
+	eng.Renderer.Pixels.Dither()
+	// Blit to screen frame-buffer
+	eng.Renderer.Render(eng.Window)
 }
 
 func (eng *Engine) SetCallbacks() {
