@@ -14,7 +14,7 @@ const (
 // Axis Aligned Bounding Box
 type Box struct {
 	Low  te.Vector3i // Stores the low position of a cubic bounding box
-	Size int         // The full side lenghts of the cubic bounding box
+	Size int         // The full side lengths of the cubic bounding box
 }
 
 func BoxInit(lx, ly, lz int, size int) Box {
@@ -46,7 +46,7 @@ func (box *Box) surrounds(v te.Vector3i) bool {
 // Slab-method of AABB and ray intersection
 // Returns (min_t, max_t) corresponding to the rays' entrance and exit time
 func (box *Box) RayIntersection(ray Ray) (float32, float32) {
-	// TODO: This needs to not be recalcualted each time -- either take MarchData or store that on the ray
+	// TODO: This needs to not be recalculated each time -- either take MarchData or store that on the ray
 	invs := ray.Dir.Inv()
 	low := box.Low.AsVec3f()
 	high := box.high().AsVec3f()
@@ -96,7 +96,7 @@ func (box *Box) Index(x, y, z int) int {
 	center := box.center()
 	index := 0
 	if !box.surrounds(te.Vec3i(x, y, z)) {
-		panic("This index function is only valid for a point containted within the box")
+		panic("This index function is only valid for a point contained within the box")
 	}
 	if x >= center.X {
 		index |= axisXBit
@@ -336,7 +336,7 @@ func (tw *TreeWalker) GotoAbsolute(x, y, z int) {
 func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 	rayhit := RayHit{Hit: false}
 
-	// This keeps endlessly looping becuase of null rays? This just
+	// This keeps endlessly looping because of null rays? This just
 	// keeps the program from freezing until I can figure out how that is happening
 	//
 	// It has something to do with bounce-rays from lighting being cast on null-hits.
