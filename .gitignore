@@ -11,6 +11,7 @@
 # go-voxel binary
 /go-voxel
 /test-parser
+/*.png
 *.pprof
 
 # too big
