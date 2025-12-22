@@ -370,11 +370,5 @@ func (tw *TreeWalker) StateMarchRay(ray Ray, data MarchData) RayHit {
 }
 
 func isPowerOfTwo(num int) bool {
-	for num != 1 {
-		if num%2 != 0 {
-			return false
-		}
-		num = num / 2
-	}
-	return true
+	return num&(num-1) == 0
 }
