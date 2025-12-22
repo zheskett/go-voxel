@@ -16,6 +16,7 @@
 # too big
 nuke.vox
 castle.vox
+church.vox
 
 # Test binary, built with `go test -c`
 *.test
