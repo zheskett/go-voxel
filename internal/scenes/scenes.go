@@ -349,6 +349,29 @@ func VoxelDebugSceneNuke(vox *vxl.VoxelWorld) {
 	vox.AddVoxelObj(nuke, 0, 0, 0)
 }
 
+func VoxelDebugSceneChurch(vox *vxl.VoxelWorld) {
+	*vox = vxl.VoxelWorldInit(2048)
+
+	brightness := 20000
+	// Add lights every 512 voxels
+	for i := range vox.X / 512 {
+		for j := range vox.Y / 512 {
+			for k := range vox.Z / 512 {
+				vox.Lights = append(vox.Lights, vxl.PointLight{
+					Position: te.Vec3(float32(i*512), float32(j*512), float32(k*512)),
+					Color:    te.Vec3(1.0, 0.95, 0.95).Mul(float32(brightness)),
+				})
+			}
+		}
+	}
+	church, err := vxl.ConvertVoxPath("assets/church.vox", false, true, false)
+	if err != nil {
+		panic(err)
+	}
+	church.Squash()
+	vox.AddVoxelObj(church, 0, 0, 0)
+}
+
 func LayoutCoordinateSystem(vox *vxl.VoxelWorld) {
 	for i := range 16 {
 		vox.SetVoxel(i, 1, 1, 255, 0, 0)

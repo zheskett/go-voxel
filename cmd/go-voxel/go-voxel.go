@@ -27,6 +27,7 @@ func main() {
 		"3 for big bunny\n" +
 		"4 for sponza\n" +
 		"5 for nuke\n" +
+		"6 for church\n" +
 		"Or anything else for small scene")
 	fmt.Scanln(&scene)
 	switch scene {
@@ -45,6 +46,9 @@ func main() {
 	case 5:
 		renderDist = 4096.0
 		scenes.VoxelDebugSceneNuke(&world)
+	case 6:
+		renderDist = 2048.0
+		scenes.VoxelDebugSceneChurch(&world)
 	default:
 		scenes.VoxelDebugSceneSmall(&world)
 	}
