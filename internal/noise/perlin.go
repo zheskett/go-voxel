@@ -21,10 +21,10 @@ type Perlin3D struct {
 	perm        []int
 }
 
-// GenPerlin2D generates a Perlin2D. TextureSize should be a power of 2 (>2).
+// GenPerlin3D generates a Perlin2D. TextureSize should be a power of 2 (>2).
 //
 // 256 is recommended
-func GenPerlin2D(TextureSize int) (Perlin3D, error) {
+func GenPerlin3D(TextureSize int) (Perlin3D, error) {
 	if TextureSize <= 2 || (TextureSize&(TextureSize-1)) != 0 {
 		return Perlin3D{}, fmt.Errorf("TextureSize should be power of 2 (>2)")
 	}
