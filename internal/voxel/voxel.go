@@ -63,7 +63,7 @@ func (vox *VoxelWorld) AddVoxelObj(vObj VoxelObj, x, y, z int) {
 	for xyz, cIdx := range vObj.Voxels {
 		vx, vy, vz := int(xyz[0]), int(xyz[1]), int(xyz[2])
 		if vox.Voxels.Root.Box.surrounds(te.Vec3i(x+vx, y+vy, z+vz)) {
-			clr := vObj.ColorPalete[cIdx]
+			clr := vObj.ColorPalette[cIdx]
 			vox.SetVoxel(x+vx, y+vy, z+vz, clr.R, clr.G, clr.B)
 		}
 	}

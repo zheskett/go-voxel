@@ -15,8 +15,8 @@ import (
 type VoxelObj struct {
 	X, Y, Z int16
 	// Voxels is a map of [x, y, z] to the color index
-	Voxels      map[[3]int16]byte
-	ColorPalete voxparse.VoxPalette
+	Voxels       map[[3]int16]byte
+	ColorPalette voxparse.VoxPalette
 }
 
 type ConnectivityDistance int
@@ -89,7 +89,7 @@ func ConvertVox(vox voxparse.Vox, flipX, flipY, flipZ bool) (VoxelObj, error) {
 		}
 	}
 
-	vObj.ColorPalete = vox.Palette
+	vObj.ColorPalette = vox.Palette
 
 	return vObj, nil
 }
