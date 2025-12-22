@@ -8,9 +8,13 @@
 *.so
 *.dylib
 
+# My Spell Check
+.typos.toml
+
 # go-voxel binary
 /go-voxel
 /test-parser
+/*.png
 *.pprof
 
 # too big
