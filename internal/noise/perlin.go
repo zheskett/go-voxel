@@ -3,15 +3,8 @@ package noise
 
 import (
 	"fmt"
-	"image/color"
-	"image/png"
-	"math/rand"
-	"os"
-
-	"image"
-
-	"github.com/chewxy/math32"
 	te "github.com/zheskett/go-voxel/internal/tensor"
+	"math/rand"
 )
 
 // Perlin2D defines perlin noise in 2D.
@@ -52,68 +45,6 @@ func (perlin *Perlin3D) Sample(vec te.Vector3) float32 {
 	lerp3 := lerp(grad(aab, x, y, z-1), grad(bab, x-1, y, z-1), u)
 	lerp4 := lerp(grad(abb, x, y-1, z-1), grad(bbb, x-1, y-1, z-1), u)
 	return (lerp(lerp(lerp1, lerp2, v), lerp(lerp3, lerp4, v), w) + 1) * 0.5
-}
-
-// FBM samples Fractional Brownian Motion at x,y,z
-//
-// https://iquilezles.org/articles/fbm/
-func (perlin *Perlin3D) FBM(vec te.Vector3, octaves int, H float32) float32 {
-	G := math32.Exp2(-H)
-	var freq, amp, total, maxVal float32 = 1.0, 1.0, 0.0, 0.0
-	for range octaves {
-		total += amp * perlin.Sample(vec.Mul(freq))
-		maxVal += amp
-		freq *= 2.0
-		amp *= G
-	}
-
-	return total / maxVal
-}
-
-// Draw an image of the noise
-func (perlin *Perlin3D) Draw(path string, pixels int, z float32, stepSize float32) error {
-	pic := image.NewGray(image.Rect(0, 0, pixels, pixels))
-	for i := range pic.Bounds().Dx() {
-		for j := range pic.Bounds().Dy() {
-			sample := perlin.Sample(te.Vec3(float32(i)*stepSize, float32(j)*stepSize, z))
-			pic.SetGray(i, j, color.Gray{uint8(math32.Round(sample * 255))})
-		}
-	}
-
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0660)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	err = png.Encode(file, pic)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Draw an image of the FBM noise
-func (perlin *Perlin3D) DrawFBM(path string, pixels int, z float32, octaves int, H, stepSize float32) error {
-	pic := image.NewGray(image.Rect(0, 0, pixels, pixels))
-	for i := range pic.Bounds().Dx() {
-		for j := range pic.Bounds().Dy() {
-			sample := perlin.FBM(te.Vec3(float32(i)*stepSize, float32(j)*stepSize, z), octaves, H)
-			pic.SetGray(i, j, color.Gray{uint8(math32.Round(sample * 255))})
-		}
-	}
-
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0660)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	err = png.Encode(file, pic)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Gradient, dot product between gradient vector and relative position
@@ -163,9 +94,4 @@ func lerp(a, b, t float32) float32 {
 // 6t^5 - 15t^4 + 10t^3
 func fade(t float32) float32 {
 	return t * t * t * (t*(t*6-15) + 10)
-}
-
-// CuRat is the Cubic Ration Smoothstep function for values 0-1.
-func CuRat(t float32) float32 {
-	return t * t * t / (3.0*t*t - 3.0*t + 1.0)
 }

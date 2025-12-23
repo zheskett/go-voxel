@@ -7,10 +7,13 @@ import (
 )
 
 func main() {
-	noise, err := noise.GenPerlin3D(256)
+	per, err := noise.GenPerlin3D(256)
 	if err != nil {
 		panic(err)
 	}
-	noise.Draw("noise.png", 2048, 0, 0.01)
-	noise.DrawFBM("FBM.png", 2048, 0, 5, 1, 0.01)
+	noise.Draw(&per, "noise.png", 2048, 0, 0.01)
+	fbm := noise.FBM3D{Source: &per, Octaves: 8, H: 0.5}
+	noise.Draw(&fbm, "FBM.png", 2048, 0, 0.01)
+	applied := noise.FnNoise3D{Source: &fbm, Fn: noise.CuRat}
+	noise.Draw(&applied, "applied.png", 2048, 0, 0.01)
 }
