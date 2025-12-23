@@ -4,7 +4,7 @@ package noise
 import (
 	"fmt"
 	te "github.com/zheskett/go-voxel/internal/tensor"
-	"math/rand"
+	"math/rand/v2"
 )
 
 // Perlin2D defines perlin noise in 2D.

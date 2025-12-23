@@ -2,6 +2,7 @@
 package scenes
 
 import (
+	"image/color"
 	"math/rand"
 
 	te "github.com/zheskett/go-voxel/internal/tensor"
@@ -347,6 +348,48 @@ func VoxelDebugSceneNuke(vox *vxl.VoxelWorld) {
 	}
 	nuke.Squash()
 	vox.AddVoxelObj(nuke, 0, 0, 0)
+}
+
+func VoxelDebugSceneTerrain(vox *vxl.VoxelWorld) {
+	*vox = vxl.VoxelWorldInit(512)
+	brightness := 10000
+	for i := range vox.X / 256 {
+		for j := range vox.Y / 256 {
+			for k := range vox.Z / 256 {
+				vox.Lights = append(vox.Lights, vxl.PointLight{
+					Position: te.Vec3(float32(i*256), float32(j*256), float32(k*256)),
+					Color:    te.Vec3(1.0, 1.0, 1.0).Mul(float32(brightness)),
+				})
+			}
+		}
+	}
+
+	terrainNoise, err := vxl.DefaultTerrainNoise()
+	if err != nil {
+		panic(err)
+	}
+	colors := [3]color.RGBA{}
+	colors[vxl.TerrainGrassIdx] = color.RGBA{R: 0, G: 225, B: 0, A: 255}
+	colors[vxl.TerrainStoneIdx] = color.RGBA{R: 120, G: 120, B: 120, A: 255}
+	colors[vxl.TerrainSnowIdx] = color.RGBA{R: 240, G: 240, B: 255, A: 255}
+	terrain, err := vxl.GenTerrainObj(vxl.TerrainOpts{
+		X:            512,
+		Y:            256,
+		Z:            512,
+		MinHeight:    10,
+		MaxHeight:    140,
+		SnowStart:    80,
+		SnowForce:    110,
+		SampleDist:   0.002,
+		Offset:       te.Vec3(0, 0, 0),
+		Source:       terrainNoise,
+		ColorPalette: colors,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	vox.AddVoxelObj(terrain, 0, 0, 0)
 }
 
 func LayoutCoordinateSystem(vox *vxl.VoxelWorld) {

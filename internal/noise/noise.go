@@ -72,3 +72,8 @@ func Draw(noise Noise3D, path string, pixels int, z float32, stepSize float32) e
 func CuRat(t float32) float32 {
 	return t * t * t / (3.0*t*t - 3.0*t + 1.0)
 }
+
+// QuRat is the Quadratic Rational Smoothstep function for values 0-1.
+func QuRat(t float32) float32 {
+	return t * t / (2.0*t*t - 2.0*t + 1.0)
+}

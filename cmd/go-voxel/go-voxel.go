@@ -14,7 +14,7 @@ import (
 
 func init() {
 	// This is needed to arrange that main() runs on main thread.
-	// This is meantioned in the usage example on github.
+	// This is mentioned in the usage example on github.
 	runtime.LockOSThread()
 }
 
@@ -27,6 +27,7 @@ func main() {
 		"3 for big bunny\n" +
 		"4 for sponza\n" +
 		"5 for nuke\n" +
+		"6 for terrain\n" +
 		"Or anything else for small scene")
 	fmt.Scanln(&scene)
 	switch scene {
@@ -45,6 +46,9 @@ func main() {
 	case 5:
 		renderDist = 4096.0
 		scenes.VoxelDebugSceneNuke(&world)
+	case 6:
+		renderDist = 512.0
+		scenes.VoxelDebugSceneTerrain(&world)
 	default:
 		scenes.VoxelDebugSceneSmall(&world)
 	}
