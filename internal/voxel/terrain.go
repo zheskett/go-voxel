@@ -34,8 +34,11 @@ func DefaultTerrainNoise() (noise.Noise3D, error) {
 		return nil, err
 	}
 
-	fbm := &noise.FBM3D{Source: &perlin, Octaves: 10, H: 1}
+	fbm := &noise.FBM3D{Source: &perlin, Octaves: 7, H: 1}
 	fn := &noise.FnNoise3D{Source: fbm, Fn: noise.CuRat}
+	fn = &noise.FnNoise3D{Source: fn, Fn: func(t float32) float32 {
+		return 0.5 * (math32.Pow(t, 14) + math32.Pow(t, 0.75))
+	}}
 	return fn, nil
 }
 

@@ -380,7 +380,7 @@ func VoxelDebugSceneTerrain(vox *vxl.VoxelWorld) {
 		MaxHeight:    140,
 		SnowStart:    80,
 		SnowForce:    110,
-		SampleDist:   0.002,
+		SampleDist:   0.0025,
 		Offset:       te.Vec3(0, 0, 0),
 		Source:       terrainNoise,
 		ColorPalette: colors,
